@@ -1,0 +1,23 @@
+# 环境配置
+.env
+.venv/
+venv/
+
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# 数据文件（可选，如果不想上传大数据）
+# data/raw/*.csv
+# data/indicators/*.json
+
+# 系统文件
+.DS_Store
+*.log
