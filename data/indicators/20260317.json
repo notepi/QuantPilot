@@ -47,7 +47,7 @@
     {
       "code": "S1-05",
       "name": "板块广度修复",
-      "value": 0.4473684210526316,
+      "value": 0.5333333333333333,
       "weight": 0.14,
       "unit": "pct",
       "direction": "higher_better",

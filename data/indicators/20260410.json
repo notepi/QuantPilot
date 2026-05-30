@@ -7,7 +7,7 @@
     {
       "code": "S1-01",
       "name": "资金回流连续性",
-      "value": 0.3333333333333333,
+      "value": 0.3076923076923077,
       "weight": 0.22,
       "unit": "pct",
       "direction": "higher_better",
@@ -17,7 +17,7 @@
     {
       "code": "S1-02",
       "name": "ETF份额变化",
-      "value": -0.018278874256359906,
+      "value": -0.06724014458589538,
       "weight": 0.18,
       "unit": "pct",
       "direction": "higher_better",
@@ -47,7 +47,7 @@
     {
       "code": "S1-05",
       "name": "板块广度修复",
-      "value": 0.8947368421052632,
+      "value": 0.8,
       "weight": 0.14,
       "unit": "pct",
       "direction": "higher_better",

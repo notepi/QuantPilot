@@ -1,0 +1,17 @@
+paths:
+  s1_indicators: data/indicators
+  market_data: data/raw
+  s2_excel: docs/创新药_第一阶段_v2_claude.xlsx
+  event_data: s2/data
+  output: s2/output
+
+windows:
+  bd_days: 90
+  regulatory_days: 90
+  clinical_market_days: 5
+
+scoring:
+  missing_score: 0.5
+  meet_score: 0.7
+  exceed_score: 1.0
+

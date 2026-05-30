@@ -1,0 +1,69 @@
+{
+  "phase": "第一阶段",
+  "trade_date": "20251013",
+  "total_score": 0.676,
+  "expectation_level": "符合预期",
+  "indicator_results": [
+    {
+      "code": "S1-01",
+      "name": "资金回流连续性",
+      "value": 0.75,
+      "weight": 0.22,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "超预期",
+      "trade_date": "20251013"
+    },
+    {
+      "code": "S1-02",
+      "name": "ETF份额变化",
+      "value": 0.3770942196843182,
+      "weight": 0.18,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "超预期",
+      "trade_date": "20251013"
+    },
+    {
+      "code": "S1-03",
+      "name": "ETF相对强度",
+      "value": -0.010420021211457527,
+      "weight": 0.2,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20251013"
+    },
+    {
+      "code": "S1-04",
+      "name": "成交放大持续性",
+      "value": 0.9321620679525966,
+      "weight": 0.14,
+      "unit": "ratio",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20251013"
+    },
+    {
+      "code": "S1-05",
+      "name": "板块广度修复",
+      "value": 0.06666666666666667,
+      "weight": 0.14,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20251013"
+    },
+    {
+      "code": "S1-06",
+      "name": "龙头先行强度",
+      "value": 0.02485332324833297,
+      "weight": 0.12,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "符合预期",
+      "trade_date": "20251013"
+    }
+  ],
+  "summary": "综合得分 0.68，整体表现符合预期。6项指标中：超预期2项，符合预期1项，低于预期3项。主要特征：资金回流连续性表现突出、ETF份额变化表现突出、ETF相对强度需关注。"
+}

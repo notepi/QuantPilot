@@ -1,0 +1,6 @@
+ticker,company,market,weight,source,note
+1093.HK,石药集团,HK,0.1069,docs/创新药_第一阶段_v2_claude.xlsx:159567成分股,159567前五大成分股
+6160.HK,百济神州,HK,0.1013,docs/创新药_第一阶段_v2_claude.xlsx:159567成分股,159567前五大成分股
+9926.HK,康方生物,HK,0.0994,docs/创新药_第一阶段_v2_claude.xlsx:159567成分股,159567前五大成分股
+1177.HK,中国生物制药,HK,0.0988,docs/创新药_第一阶段_v2_claude.xlsx:159567成分股,159567前五大成分股
+1801.HK,信达生物,HK,0.0975,docs/创新药_第一阶段_v2_claude.xlsx:159567成分股,159567前五大成分股

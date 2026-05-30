@@ -1,27 +1,27 @@
 {
   "phase": "第一阶段",
   "trade_date": "20260409",
-  "total_score": 0.742,
+  "total_score": 0.622,
   "expectation_level": "符合预期",
   "indicator_results": [
     {
       "code": "S1-01",
       "name": "资金回流连续性",
-      "value": 0.4166666666666667,
+      "value": 0.38461538461538464,
       "weight": 0.22,
       "unit": "pct",
       "direction": "higher_better",
-      "expectation": "符合预期",
+      "expectation": "低于预期",
       "trade_date": "20260409"
     },
     {
       "code": "S1-02",
       "name": "ETF份额变化",
-      "value": 0.005316239850135199,
+      "value": -0.0006645299812668998,
       "weight": 0.18,
       "unit": "pct",
       "direction": "higher_better",
-      "expectation": "符合预期",
+      "expectation": "低于预期",
       "trade_date": "20260409"
     },
     {
@@ -47,7 +47,7 @@
     {
       "code": "S1-05",
       "name": "板块广度修复",
-      "value": 0.8947368421052632,
+      "value": 0.8,
       "weight": 0.14,
       "unit": "pct",
       "direction": "higher_better",
@@ -65,5 +65,5 @@
       "trade_date": "20260409"
     }
   ],
-  "summary": "综合得分 0.74，整体表现符合预期。6项指标中：超预期1项，符合预期5项，低于预期0项。主要特征：板块广度修复表现突出。"
+  "summary": "综合得分 0.62，整体表现符合预期。6项指标中：超预期1项，符合预期3项，低于预期2项。主要特征：资金回流连续性需关注、ETF份额变化需关注、板块广度修复表现突出。"
 }

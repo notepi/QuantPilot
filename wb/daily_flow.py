@@ -3,6 +3,9 @@
 
 import subprocess
 import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
 def run_step(module: str, description: str) -> bool:
@@ -12,7 +15,7 @@ def run_step(module: str, description: str) -> bool:
     print('='*50)
     result = subprocess.run(
         [sys.executable, "-m", module],
-        cwd="/Users/pan/Desktop/01 工作资料/quant-Claude-KAC",
+        cwd=PROJECT_ROOT,
     )
     return result.returncode == 0
 
