@@ -31,6 +31,10 @@ def _fmt(value: float | None, percent: bool = False, money: bool = False) -> str
     return f"{value:.2%}" if percent else f"{value:.2f}"
 
 
+def _csv_float(value: float | None) -> str:
+    return "" if value is None else f"{value:.8f}"
+
+
 def _s1_line(record: S1Record) -> str:
     s102 = record.indicators.get("S1-02", {}).get("value")
     s105 = record.indicators.get("S1-05", {}).get("value")
@@ -178,6 +182,107 @@ def _upsert_score(output_dir: Path, report_date: str, s1: S1Record, s2: S2Score,
         writer.writerows(sorted(rows, key=lambda row: row["date"]))
 
 
+def _upsert_item_scores(output_dir: Path, report_date: str, s1: S1Record, s2: S2Score) -> None:
+    path = output_dir / "s2_item_scores.csv"
+    fields = [
+        "date",
+        "s1_trade_date",
+        "code",
+        "name",
+        "value",
+        "raw_score",
+        "adjusted_score",
+        "confidence",
+        "sample_count",
+        "replacement_count",
+        "rating",
+        "source",
+        "basis",
+        "missing",
+        "event_db_maturity",
+        "raw_bd_amount",
+        "quality_bd_amount",
+        "true_value",
+        "proxy_value",
+        "true_sample_count",
+        "proxy_sample_count",
+        "proxy_type",
+        "leader_excess_median_5d",
+        "leader_win_rate_5d",
+        "leader_excess_median_10d",
+        "leader_breadth_20d",
+    ]
+    rows: list[dict[str, str]] = []
+    if path.exists():
+        with path.open(newline="", encoding="utf-8") as fh:
+            rows = [row for row in csv.DictReader(fh) if row.get("date") != report_date]
+
+    for item in s2.items.values():
+        rows.append({
+            "date": report_date,
+            "s1_trade_date": s1.trade_date,
+            "code": item.code,
+            "name": item.name,
+            "value": _csv_float(item.value),
+            "raw_score": f"{item.raw_score:.4f}",
+            "adjusted_score": f"{item.adjusted_score:.4f}",
+            "confidence": f"{item.confidence:.4f}",
+            "sample_count": str(item.sample_count),
+            "replacement_count": str(item.replacement_count),
+            "rating": item.rating,
+            "source": item.source,
+            "basis": item.basis,
+            "missing": item.missing,
+            "event_db_maturity": item.event_db_maturity,
+            "raw_bd_amount": _csv_float(item.raw_bd_amount),
+            "quality_bd_amount": _csv_float(item.quality_bd_amount),
+            "true_value": _csv_float(item.true_value),
+            "proxy_value": _csv_float(item.proxy_value),
+            "true_sample_count": str(item.true_sample_count),
+            "proxy_sample_count": str(item.proxy_sample_count),
+            "proxy_type": item.proxy_type,
+            "leader_excess_median_5d": _csv_float(item.leader_excess_median_5d),
+            "leader_win_rate_5d": _csv_float(item.leader_win_rate_5d),
+            "leader_excess_median_10d": _csv_float(item.leader_excess_median_10d),
+            "leader_breadth_20d": _csv_float(item.leader_breadth_20d),
+        })
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(sorted(rows, key=lambda row: (row["date"], row["code"])))
+
+
+def _render_indicator_history(output_dir: Path) -> str:
+    item_path = output_dir / "s2_item_scores.csv"
+    if not item_path.exists():
+        return "# 创新药 S2 指标历史\n\n暂无 S2 指标历史。\n"
+
+    with item_path.open(newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    latest_dates = sorted({row["date"] for row in rows}, reverse=True)[:30]
+    rows = [row for row in rows if row["date"] in latest_dates]
+
+    lines = [
+        "# 创新药 S2 指标历史",
+        "",
+        "该文件由 `python -m s2.generate_s2_report` 自动生成，记录 S2-01 到 S2-05 的每日底层计算结果。",
+        "",
+        "| 日期 | 指标 | 指标值 | 原始得分 | 调整后得分 | 置信度 | 样本数 | 替代口径数 | 真实样本 | 代理样本 | 成熟度 | 评级 | 缺失说明 |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |",
+    ]
+    for row in sorted(rows, key=lambda item: (item["date"], item["code"]), reverse=True):
+        value = row["value"] or "数据缺失"
+        lines.append(
+            f"| {row['date']} | {row['code']} {row['name']} | {value} | {float(row['raw_score']):.2f} | "
+            f"{float(row['adjusted_score']):.2f} | {float(row['confidence']):.2f} | {row['sample_count']} | "
+            f"{row['replacement_count']} | {row.get('true_sample_count', '0')} | {row.get('proxy_sample_count', '0')} | "
+            f"{row.get('event_db_maturity', '') or '-'} | {row['rating']} | {row['missing'] or '-'} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def generate_report(
     indicators_dir: Path = DEFAULT_INDICATORS_DIR,
     data_dir: Path = DEFAULT_DATA_DIR,
@@ -206,6 +311,8 @@ def generate_report(
     (output_dir / "s2_daily_report.md").write_text(content, encoding="utf-8")
     stage, action = _stage(latest_s1, s2)
     _upsert_score(output_dir, report_date, latest_s1, s2, stage, action)
+    _upsert_item_scores(output_dir, report_date, latest_s1, s2)
+    (output_dir / "s2_indicator_history.md").write_text(_render_indicator_history(output_dir), encoding="utf-8")
     return report_path
 
 

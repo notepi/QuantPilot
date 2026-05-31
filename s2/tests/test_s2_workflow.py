@@ -178,6 +178,86 @@ def test_adjusted_score_caps_small_samples_and_replacements(tmp_path):
     assert result.adjusted_score <= 0.75
 
 
+def test_s2_v1_quality_controls_and_proxy_breakdown(tmp_path):
+    data_dir = tmp_path / "data"
+    output_dir = tmp_path / "output"
+    market_dir = Path("data/raw")
+    ensure_event_store(data_dir)
+    append_events(
+        data_dir / "bd_events.csv",
+        [
+            {
+                "date": "2026-05-28",
+                "company": "信达生物",
+                "ticker": "01801.HK",
+                "asset": "oncology programs",
+                "partner": "Pfizer",
+                "upfront_usd": "650000000",
+                "near_term_milestone_usd": "100000000",
+                "total_value_usd": "10500000000",
+                "source_url": "https://example.com/innovent",
+                "source_tier": "1",
+                "importance": "high",
+                "status": "active",
+                "note": "重大BD",
+            },
+            {
+                "date": "2026-05-12",
+                "company": "恒瑞医药",
+                "ticker": "600276.SH",
+                "asset": "portfolio",
+                "partner": "BMS",
+                "upfront_usd": "600000000",
+                "near_term_milestone_usd": "350000000",
+                "total_value_usd": "15200000000",
+                "source_url": "https://example.com/hengrui",
+                "source_tier": "1",
+                "importance": "high",
+                "status": "active",
+                "note": "重大BD",
+            },
+        ],
+    )
+    append_events(
+        data_dir / "clinical_events.csv",
+        [
+            {
+                "date": "2026-05-26",
+                "company": "康方生物",
+                "ticker": "9926.HK",
+                "conference": "ASCO 2026",
+                "asset": "ivonescimab",
+                "source_url": "https://example.com/akeso",
+                "source_tier": "2",
+                "importance": "high",
+                "status": "active",
+                "note": "ASCO plenary",
+            }
+        ],
+    )
+
+    result = score_s2(
+        trade_date="20260529",
+        data_dir=data_dir,
+        output_dir=output_dir,
+        market_data_dir=market_dir,
+        excel_path=Path("docs/创新药_第一阶段_v2_claude.xlsx"),
+    )
+
+    assert result.items["S2-01"].event_db_maturity == "low"
+    assert result.items["S2-01"].adjusted_score <= 0.70
+    assert result.items["S2-02"].raw_bd_amount == pytest.approx(1_700_000_000)
+    assert result.items["S2-02"].quality_bd_amount == pytest.approx(1_475_000_000)
+    assert result.items["S2-04"].true_sample_count == 0
+    assert result.items["S2-04"].proxy_sample_count == 1
+    assert result.items["S2-04"].adjusted_score <= 0.60
+    assert result.items["S2-04"].proxy_type == "ETF承接替代"
+    assert result.items["S2-05"].leader_excess_median_5d is not None
+    assert result.items["S2-05"].leader_win_rate_5d is not None
+    assert result.items["S2-05"].leader_excess_median_10d is not None
+    assert result.items["S2-05"].leader_breadth_20d is not None
+
+
 def test_generate_report_writes_independent_outputs_without_daily_report(tmp_path):
     indicators = tmp_path / "indicators"
     data_dir = tmp_path / "s2_data"
@@ -203,6 +283,8 @@ def test_generate_report_writes_independent_outputs_without_daily_report(tmp_pat
     assert report_path.exists()
     assert (output_dir / "s2_daily_report.md").exists()
     assert (output_dir / "s2_scores.csv").exists()
+    assert (output_dir / "s2_item_scores.csv").exists()
+    assert (output_dir / "s2_indicator_history.md").exists()
     assert daily_report.read_text(encoding="utf-8") == "OLD S1 REPORT"
 
     with (output_dir / "s2_scores.csv").open(encoding="utf-8") as fh:
@@ -210,3 +292,14 @@ def test_generate_report_writes_independent_outputs_without_daily_report(tmp_pat
     assert rows[0]["date"] == "2026-05-30"
     assert "s2_raw_score" in rows[0]
     assert "s2_adjusted_score" in rows[0]
+
+    with (output_dir / "s2_item_scores.csv").open(encoding="utf-8") as fh:
+        item_rows = list(csv.DictReader(fh))
+    assert len(item_rows) == 5
+    assert {row["code"] for row in item_rows} == {"S2-01", "S2-02", "S2-03", "S2-04", "S2-05"}
+    assert "adjusted_score" in item_rows[0]
+    assert "event_db_maturity" in item_rows[0]
+    assert "raw_bd_amount" in item_rows[0]
+    assert "quality_bd_amount" in item_rows[0]
+    assert "true_sample_count" in item_rows[0]
+    assert "proxy_sample_count" in item_rows[0]

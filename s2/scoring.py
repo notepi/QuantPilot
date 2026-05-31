@@ -45,6 +45,18 @@ class S2Item:
     sample_count: int = 0
     replacement_count: int = 0
     missing: str = ""
+    event_db_maturity: str = ""
+    raw_bd_amount: float | None = None
+    quality_bd_amount: float | None = None
+    true_value: float | None = None
+    proxy_value: float | None = None
+    true_sample_count: int = 0
+    proxy_sample_count: int = 0
+    proxy_type: str = ""
+    leader_excess_median_5d: float | None = None
+    leader_win_rate_5d: float | None = None
+    leader_excess_median_10d: float | None = None
+    leader_breadth_20d: float | None = None
 
     @property
     def score(self) -> float:
@@ -161,6 +173,14 @@ def _adjust(raw_score: float, sample_count: int, replacement_count: int = 0, mis
     return min(raw_score, cap), confidence
 
 
+def _event_db_maturity(count_365d: int) -> str:
+    if count_365d < 8:
+        return "low"
+    if count_365d < 15:
+        return "medium"
+    return "high"
+
+
 def _bd_frequency(defn: S2Definition, bd_events: list[dict[str, str]], trade_date: str) -> S2Item:
     recent = _active_since(bd_events, trade_date, 90)
     last_year = _active_since(bd_events, trade_date, 365)
@@ -180,7 +200,12 @@ def _bd_frequency(defn: S2Definition, bd_events: list[dict[str, str]], trade_dat
         missing = missing or "过去4季度基准不足，当前倍数仅基于事件库现有样本"
     basis = f"近90日重大BD {len(recent)} 笔；过去365日事件库记录 {len(last_year)} 笔"
     adjusted, confidence = _adjust(raw_score, len(recent), missing=missing)
-    return S2Item(defn.code, defn.name, value, raw_score, adjusted, confidence, rating, basis, "bd_events.csv", len(recent), 0, missing)
+    maturity = _event_db_maturity(len(last_year))
+    if maturity == "low":
+        adjusted = min(adjusted, 0.70)
+    elif maturity == "medium":
+        adjusted = min(adjusted, 0.80)
+    return S2Item(defn.code, defn.name, value, raw_score, adjusted, confidence, rating, basis, "bd_events.csv", len(recent), 0, missing, maturity)
 
 
 def _bd_quality(defn: S2Definition, bd_events: list[dict[str, str]], trade_date: str) -> S2Item:
@@ -189,6 +214,12 @@ def _bd_quality(defn: S2Definition, bd_events: list[dict[str, str]], trade_date:
         adjusted, confidence = _adjust(0.5, 0, missing="BD金额事件缺失")
         return S2Item(defn.code, defn.name, None, 0.5, adjusted, confidence, "数据缺失", "近90日无可统计BD金额", "bd_events.csv", 0, 0, "BD金额事件缺失")
     amount = sum(_number(e.get("upfront_usd", "")) + _number(e.get("near_term_milestone_usd", "")) for e in recent)
+    quality_amount = sum(
+        _number(e.get("upfront_usd", ""))
+        + 0.5 * _number(e.get("near_term_milestone_usd", ""))
+        + 0.1 * _number(e.get("long_term_milestone_usd", ""))
+        for e in recent
+    )
     high_quality = any(e.get("source_tier") == "1" or e.get("importance") == "high" for e in recent)
     if amount <= 0:
         raw_score, rating = (0.7, "符合预期") if high_quality else (0.5, "数据缺失")
@@ -197,7 +228,8 @@ def _bd_quality(defn: S2Definition, bd_events: list[dict[str, str]], trade_date:
         raw_score, rating = (1.0, "超预期") if amount >= 500_000_000 else (0.7, "符合预期")
         missing = "去年同期金额基准不足，V1以近90日金额绝对强度辅助评分"
     adjusted, confidence = _adjust(raw_score, len(recent), missing=missing)
-    return S2Item(defn.code, defn.name, amount, raw_score, adjusted, confidence, rating, f"近90日首付款+近期里程碑合计 {amount:,.0f} USD", "bd_events.csv", len(recent), 0, missing)
+    basis = f"近90日raw金额 {amount:,.0f} USD；质量金额 {quality_amount:,.0f} USD"
+    return S2Item(defn.code, defn.name, amount, raw_score, adjusted, confidence, rating, basis, "bd_events.csv", len(recent), 0, missing, raw_bd_amount=amount, quality_bd_amount=quality_amount)
 
 
 def _earnings(defn: S2Definition, earnings_events: list[dict[str, str]]) -> S2Item:
@@ -216,14 +248,52 @@ def _clinical(defn: S2Definition, clinical_events: list[dict[str, str]], market_
     result = clinical_conversion_rate(clinical_events, market_data_dir)
     raw_score, rating = _rate_score(result.value, 0.60, 0.40)
     adjusted, confidence = _adjust(raw_score, result.sample_count, result.replacement_count, "；".join(result.missing))
-    return S2Item(defn.code, defn.name, result.value, raw_score, adjusted, confidence, rating, result.basis, "clinical_events.csv + 本地行情", result.sample_count, result.replacement_count, "；".join(result.missing))
+    if result.true_sample_count == 0 and result.proxy_sample_count > 0:
+        adjusted = min(adjusted, 0.60)
+        confidence = min(confidence, 0.60)
+    return S2Item(
+        defn.code,
+        defn.name,
+        result.value,
+        raw_score,
+        adjusted,
+        confidence,
+        rating,
+        result.basis,
+        "clinical_events.csv + 本地行情",
+        result.sample_count,
+        result.replacement_count,
+        "；".join(result.missing),
+        true_value=result.true_value,
+        proxy_value=result.proxy_value,
+        true_sample_count=result.true_sample_count,
+        proxy_sample_count=result.proxy_sample_count,
+        proxy_type=result.proxy_type,
+    )
 
 
 def _leader(defn: S2Definition, catalyst_events: list[dict[str, str]], market_data_dir: Path) -> S2Item:
     result = leader_excess_median(catalyst_events, market_data_dir)
     raw_score, rating = _rate_score(result.value, 0.05, 0.0)
     adjusted, confidence = _adjust(raw_score, result.sample_count, result.replacement_count, "；".join(result.missing))
-    return S2Item(defn.code, defn.name, result.value, raw_score, adjusted, confidence, rating, result.basis, "事件库 + 本地行情", result.sample_count, result.replacement_count, "；".join(result.missing))
+    return S2Item(
+        defn.code,
+        defn.name,
+        result.value,
+        raw_score,
+        adjusted,
+        confidence,
+        rating,
+        result.basis,
+        "事件库 + 本地行情",
+        result.sample_count,
+        result.replacement_count,
+        "；".join(result.missing),
+        leader_excess_median_5d=result.leader_excess_median_5d,
+        leader_win_rate_5d=result.leader_win_rate_5d,
+        leader_excess_median_10d=result.leader_excess_median_10d,
+        leader_breadth_20d=result.leader_breadth_20d,
+    )
 
 
 def score_s2(
