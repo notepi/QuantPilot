@@ -151,6 +151,9 @@ def fetch_fund_daily(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     df = pro.fund_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     if df is None or len(df) == 0:
         return pd.DataFrame()
+    if "trade_date" not in df.columns:
+        print(f"  {ts_code}: fund_daily返回缺少trade_date，按无新数据处理；columns={list(df.columns)}")
+        return pd.DataFrame()
 
     # 过滤日期范围
     df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
@@ -174,6 +177,9 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     pro = citydata_pro_api()
     df = pro.fund_share(ts_code=ts_code)
     if df is None or len(df) == 0:
+        return pd.DataFrame()
+    if "trade_date" not in df.columns:
+        print(f"  {ts_code}: fund_share返回缺少trade_date，按无新数据处理；columns={list(df.columns)}")
         return pd.DataFrame()
 
     # 过滤日期范围
@@ -199,6 +205,9 @@ def fetch_daily(ts_codes: list, start_date: str, end_date: str) -> pd.DataFrame:
     codes_str = ",".join(ts_codes)
     df = pro.daily(ts_code=codes_str, start_date=start_date, end_date=end_date)
     if df is None or len(df) == 0:
+        return pd.DataFrame()
+    if "trade_date" not in df.columns:
+        print(f"  daily返回缺少trade_date，按无新数据处理；columns={list(df.columns)}")
         return pd.DataFrame()
 
     # 过滤日期范围
@@ -359,12 +368,14 @@ def update_fund_portfolio():
     pro = citydata_pro_api()
     df = pro.fund_portfolio(ts_code=ETF_CODE)
 
-    if df is not None and len(df) > 0:
+    required_cols = {"ts_code", "ann_date", "end_date", "symbol"}
+    if df is not None and len(df) > 0 and required_cols.issubset(df.columns):
         filepath = DATA_DIR / "fund_portfolio.csv"
         df.to_csv(filepath, index=False)
         print(f"  保存 {len(df)} 条记录")
     else:
-        print("  获取失败")
+        columns = list(df.columns) if df is not None else []
+        print(f"  获取失败或返回结构异常，保留本地既有持仓；columns={columns}")
 
 
 # ==================== 主流程 ====================

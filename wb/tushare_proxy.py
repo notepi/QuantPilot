@@ -46,6 +46,44 @@ load_dotenv()
 PROXY_BASE_URL = "https://tushare.citydata.club"
 
 
+def _frame_from_payload(data) -> pd.DataFrame:
+    """Normalise citydata/tushare-like payloads into a rectangular DataFrame."""
+    if not data:
+        return pd.DataFrame()
+    if isinstance(data, dict):
+        nested = data.get("data")
+        if isinstance(nested, dict):
+            fields = nested.get("fields")
+            items = nested.get("items")
+            if isinstance(items, list):
+                if not items:
+                    return pd.DataFrame()
+                if isinstance(items[0], dict):
+                    return pd.DataFrame(items)
+                if isinstance(fields, list):
+                    return pd.DataFrame(items, columns=fields)
+        if isinstance(nested, list):
+            if not nested:
+                return pd.DataFrame()
+            if len(nested) >= 2 and isinstance(nested[0], list) and isinstance(nested[1], list):
+                rows = nested[1]
+                if rows and isinstance(rows[0], dict):
+                    return pd.DataFrame(rows)
+                return pd.DataFrame(rows, columns=nested[0])
+            if isinstance(nested[0], dict):
+                return pd.DataFrame(nested)
+        fields = data.get("fields")
+        items = data.get("items")
+        if isinstance(items, list):
+            if not items:
+                return pd.DataFrame()
+            if isinstance(items[0], dict):
+                return pd.DataFrame(items)
+            if isinstance(fields, list):
+                return pd.DataFrame(items, columns=fields)
+    return pd.DataFrame(data)
+
+
 class TushareProxyAPI:
     """
     模拟 tushare.pro_api 对象。
@@ -97,10 +135,7 @@ class TushareProxyAPI:
             if "TOKEN" in msg or "失效" in msg or "token" in msg.lower():
                 raise PermissionError(f"Token 无效或已过期: {msg}")
 
-        if not data:
-            return pd.DataFrame()
-
-        return pd.DataFrame(data)
+        return _frame_from_payload(data)
 
     # ─────────────────────────────────────────────
     # __getattr__：未显式定义的接口自动代理

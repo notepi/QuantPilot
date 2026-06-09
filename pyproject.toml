@@ -16,6 +16,7 @@ dependencies = [
     "openpyxl>=3.1.5",
     "streamlit>=1.30.0",
     "plotly>=5.18.0",
+    "akshare",
 ]
 
 [project.optional-dependencies]

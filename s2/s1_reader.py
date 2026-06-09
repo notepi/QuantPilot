@@ -22,6 +22,7 @@ def _normalise(raw: dict[str, Any]) -> S1Record:
         item.get("code", ""): {
             "name": item.get("name", ""),
             "value": float(item.get("value", 0.0) or 0.0),
+            "weight": float(item.get("weight", 0.0) or 0.0),
             "expectation": item.get("expectation", "数据缺失"),
         }
         for item in raw.get("indicator_results", [])
@@ -54,4 +55,3 @@ def load_latest_s1(indicators_dir: Path, limit: int = 10) -> tuple[S1Record, lis
     if not records:
         raise FileNotFoundError(f"未找到S1指标JSON: {indicators_dir}")
     return records[-1], records[-limit:]
-
