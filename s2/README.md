@@ -125,12 +125,35 @@ event_type + company + asset/period/approval_type + partner + date
 
 ## 运行
 
+### 完整数据层更新（推荐）
+
 ```bash
-python -m s2.update_market_data
+# 一步完成：行情抓取 + 审计 + S2-04 计算 + 数据质量报告
+python -m s2.build_data_layer
+
+# 然后生成 S2 日报
 python -m s2.generate_s2_report
 ```
 
-输出只写入 `s2/output/`，不会覆盖 `docs/daily_report.md`。
+### 单独更新行情缓存
+
+```bash
+# 只更新 159567/159557 的 hk_cache 和港股个股行情
+python -m s2.update_market_data
+```
+
+### 输出文件
+
+| 文件 | 说明 |
+|------|------|
+| `data/processed/market_daily.csv` | 所有标的行情（含审计字段） |
+| `s2/output/data_audit/market_data_audit.csv` | 行情审计结果 |
+| `s2/output/hk_cache/159567.csv` | 159567 行情缓存 |
+| `s2/output/hk_cache/159557.csv` | 159557 行情缓存 |
+| `s2/data/clinical_trade_returns.csv` | S2-04 交易样本 |
+| `reports/data_quality_report.md` | 数据质量报告 |
+
+输出只写入 `s2/output/`、`data/processed/`、`reports/`，不会覆盖 `docs/daily_report.md`。
 
 ## 历史底稿
 
