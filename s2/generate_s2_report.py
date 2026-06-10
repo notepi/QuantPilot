@@ -215,9 +215,10 @@ def _s1_structure_flags(record: S1Record) -> dict[str, str]:
     }
     if breadth is None:
         return result
+    if float(breadth) < 0.40:
+        result["s1_breadth_state"] = "weak_breadth"
     if float(breadth) < 0.20:
         result["s1_structure_quality"] = "weak_breadth_repair"
-        result["s1_breadth_state"] = "weak_breadth"
     if float(breadth) < 0.10:
         result["s1_breadth_state"] = "breadth_collapse"
     return result

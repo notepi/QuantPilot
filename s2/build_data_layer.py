@@ -144,6 +144,22 @@ def _normalise_citydata(df: pd.DataFrame, symbol: str, source_api: str, asset_ty
     return result.dropna(subset=["trade_date", "close"])[MARKET_FIELDS]
 
 
+def _latest_trade_date(df: pd.DataFrame) -> str:
+    if df.empty or "trade_date" not in df.columns:
+        return ""
+    return str(df["trade_date"].astype(str).str.replace("-", "", regex=False).max())
+
+
+def _fetch_citydata_a_stock_with_trade_date_supplement(symbol: str, start: str, end: str, error: str = "") -> pd.DataFrame:
+    pro = citydata_pro_api()
+    range_df = pro.daily(ts_code=symbol, start_date=start, end_date=end)
+    if range_df.empty or _latest_trade_date(range_df) < end:
+        day_df = pro.daily(ts_code=symbol, trade_date=end)
+        if not day_df.empty:
+            range_df = pd.concat([range_df, day_df], ignore_index=True) if not range_df.empty else day_df
+    return _normalise_citydata(range_df, symbol, "daily", "a_share_stock", error)
+
+
 def _fetch_a_stock(symbol: str) -> pd.DataFrame:
     start = _start_date()
     end = _today()
@@ -151,11 +167,13 @@ def _fetch_a_stock(symbol: str) -> pd.DataFrame:
         import akshare as ak
 
         df = ak.stock_zh_a_hist(symbol=symbol.split(".")[0], period="daily", start_date=start, end_date=end, adjust="")
-        return _normalise_akshare_cn(df, symbol, "stock_zh_a_hist", "akshare://stock_zh_a_hist", "a_share_stock")
+        normalised = _normalise_akshare_cn(df, symbol, "stock_zh_a_hist", "akshare://stock_zh_a_hist", "a_share_stock")
+        if _latest_trade_date(normalised) >= end:
+            return normalised
+        return _fetch_citydata_a_stock_with_trade_date_supplement(symbol, start, end, "akshare_stale")
     except Exception as exc:  # noqa: BLE001
         try:
-            df = citydata_pro_api().daily(ts_code=symbol, start_date=start, end_date=end)
-            return _normalise_citydata(df, symbol, "daily", "a_share_stock", f"akshare_failed: {type(exc).__name__}: {str(exc)[:120]}")
+            return _fetch_citydata_a_stock_with_trade_date_supplement(symbol, start, end, f"akshare_failed: {type(exc).__name__}: {str(exc)[:120]}")
         except Exception as fallback_exc:  # noqa: BLE001
             return _empty_market(symbol, "stock_zh_a_hist|citydata.daily", f"akshare {type(exc).__name__}: {str(exc)[:100]}; citydata {type(fallback_exc).__name__}: {str(fallback_exc)[:100]}", "a_share_stock")
 
