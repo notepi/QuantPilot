@@ -362,6 +362,14 @@ def test_generate_report_writes_independent_outputs_without_daily_report(tmp_pat
     assert (output_dir / "s2_indicator_history.md").exists()
     assert (output_dir / "hk_observation_scores.csv").exists()
     assert daily_report.read_text(encoding="utf-8") == "OLD S1 REPORT"
+    report_text = (output_dir / "s2_daily_report.md").read_text(encoding="utf-8")
+    assert "S2_STYLE" not in report_text
+    assert "S2_TOTAL" not in report_text
+    assert "right_side_score" not in report_text
+    assert "仓位动作标签" not in report_text
+    assert "AI/科技成长—创新药严格验证" not in report_text
+    assert "ai_style_daily_report.md" in report_text
+    assert not (output_dir / "ai_style_daily_report.md").exists()
 
     with (output_dir / "s2_scores.csv").open(encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
@@ -373,6 +381,9 @@ def test_generate_report_writes_independent_outputs_without_daily_report(tmp_pat
     assert "formal_rating" in rows[0]
     assert "explanation_status" in rows[0]
     assert "final_view" in rows[0]
+    assert rows[0]["s2_style"] == ""
+    assert rows[0]["s2_total_with_style"] == ""
+    assert rows[0]["style_data_status"] == "deprecated"
     assert "s2_event_score" in rows[0]
     assert "s2_conversion_score" in rows[0]
     assert "s2_event_rating" in rows[0]
@@ -425,7 +436,7 @@ def test_generate_report_writes_independent_outputs_without_daily_report(tmp_pat
     assert "S2-03a / S2-03b 业绩验证层" in report
     assert "S2-06 商业化兑现质量" in report
     assert "Policy_Risk_Layer 政策风险层" in report
-    assert "Macro_Risk_Layer 宏观资金层" in report
+    assert "Macro_Risk_Layer 宏观资金层" not in report
     assert "final_view_code_dict" in report
 
 

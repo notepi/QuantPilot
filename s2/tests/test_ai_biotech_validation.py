@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from s2.ai_biotech_validation import _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
+from s2.generate_ai_style_report import generate_ai_style_report
 
 
 def _write_config(path: Path) -> None:
@@ -372,3 +373,36 @@ def test_a_share_same_day_strength_is_not_named_as_lead():
     assert "589720_same_day_outperformance" in same_day
     assert all("leads" not in condition for condition in same_day)
     assert "589720_positive_signal" in lead
+
+
+def test_ai_style_report_generates_independently_without_formal_position_action(tmp_path):
+    market = tmp_path / "market_daily.csv"
+    macro = tmp_path / "macro_market_daily.csv"
+    indicators = tmp_path / "indicators"
+    s2_scores = tmp_path / "s2_scores.csv"
+    config = tmp_path / "style_config.json"
+    versions = tmp_path / "ai_core_versions.json"
+    output = tmp_path / "output"
+    _write_market(market)
+    _write_macro(macro)
+    _write_s1(indicators)
+    _write_config(config)
+    _write_ai_versions(versions)
+    pd.DataFrame(
+        [{"date": "2026-01-01", "s2_adjusted_score": 0.6, "s2_event_score": 0.6, "s2_conversion_score": 0.5}]
+    ).to_csv(s2_scores, index=False)
+
+    report = generate_ai_style_report(market, macro, indicators, s2_scores, config, versions, output)
+
+    text = report.read_text(encoding="utf-8")
+    assert report == output / "ai_style_daily_report.md"
+    assert "# AI与科技成长风格日报" in text
+    assert "20日" in text
+    assert "60日" in text
+    assert "120日" in text
+    assert "250日" in text
+    assert "核心指数状态" in text
+    assert "context_action_hint" in text
+    assert "正式position_action" not in text
+    assert "建议：reduce" not in text
+    assert "建议：increase" not in text

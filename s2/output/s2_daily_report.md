@@ -11,6 +11,7 @@
 589720.SH 用于观察 A 股创新药资金状态；159567.SZ 用于观察港股创新药实际交易方向；159557.SZ 用于判断港股创新药是否强于港股医疗宽基。
 
 **口径边界**: 589720.SH 弱，只表示 A 股科创创新药资金状态偏弱；159567.SZ 是否强，需要单独读取 HK_observation。
+**外部风格分析**: AI/科技成长风格观察请参见 `ai_style_daily_report.md`；不进入 S2 正式评分。
 
 ## 一、今日结论
 
@@ -20,8 +21,6 @@
 - S1_score_contribution：flow_score_contribution=0.268；price_strength_contribution=0.140；volume_contribution=0.056；breadth_contribution=0.098；leader_contribution=0.048。
 - S1改善主要来自资金/份额流入，非价格强度和广度扩散。
 - S2正式量化等级：adjusted_score=0.60，等级为符合预期。
-- S2_INDUSTRY=0.60；S2_STYLE=0.34；S2_TOTAL=0.54；style_regime=NEUTRAL。
-- AI—创新药严格验证：右侧确认评分=23.54；命题状态=weakened；仓位动作标签=reduce。
 - S2产业事件侧得分：S2_event_score=0.65，状态为符合预期。
 - S2交易转化侧得分：S2_conversion_score=0.50，状态为交易转化修复中，但未确认。
 - BD联动解释：BD频率与金额质量均符合预期，说明产业事件侧较前期改善；但该改善尚未通过S2-04和S2-05转化为交易确认。
@@ -30,7 +29,7 @@
 - 日间变化说明：产业事件侧较前一日改善；交易转化侧状态为交易转化修复中，但未确认。
 - S2解释性状态：一致预期验证缺数据；财报客观改善有效，但不能冒充超一致预期。
 - 港股观察层：159567 数据状态为 latest_valid；可判断相对强弱。
-- 综合客观状态：C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计中性，S1=0.61；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高；risk_off_defensive=false；ai_crowding_unwind=false；biotech_relative_strength=true；hk_innovation_vs_health=positive
+- 综合客观状态：C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计中性，S1=0.61；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
 
 - 产业事件状态：今日无新增重大产业事件，产业事件分沿用当前观察窗口。
 - 交易转化成熟度：S2-04 去重正式交易样本 9 个，raw成熟事件 10 个，success_rate=22.22%，评级 低于预期；S2-05 评级 符合预期。
@@ -48,7 +47,7 @@
 | --- | --- | --- |
 | BD频率符合预期 | S2_conversion_score=0.50，修复但未确认 | S2-03b一致预期缺失 |
 | BD金额质量符合预期 | S1-05=46.67%，normal | S2-06商业化兑现低置信度 |
-| 产业事件侧得分0.65 | S2-04 success_rate=22.22% | Macro_Risk_Layer核心字段缺失1/10 |
+| 产业事件侧得分0.65 | S2-04 success_rate=22.22% | missing |
 | HK_observation=latest_valid | Policy_Risk_Layer=risk_up | missing |
 
 ## 二、今日变化
@@ -309,89 +308,9 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | BIOSECURE | 2025-12-18 | US | procurement_supply_chain_risk | risk_up | high | effective | 603259.SH\|02269.HK | https://www.bakermckenzie.com/en/insight/publications/2026/01/united-states-the-biosecure-act-becomes-law | 2026-06-08 | BIOSECURE已成为法律并形成美国政府采购/供应链合规风险；仅进入政策风险观察层，不进入S2正式分 |
 | BINSA | 2026-06-02 | US | outbound_investment_BD_sentiment_risk | risk_up | medium | proposed | 600276.SH\|01801.HK\|09926.HK | https://chinaselectcommittee.house.gov/media/press-releases/moolenaar-dingell-introduce-legislation-to-prevent-offshoring-biotech-industry-to-china | 2026-06-08 | BINSA拟把生物技术纳入对外投资审查，可能压制BD出海风险偏好；仅进入政策风险观察层，不进入S2正式分 |
 
-## 八、Macro_Risk_Layer 宏观资金层
+## 十、外部风格分析
 
-- Macro_Risk_Layer 不进入 S2正式分，只用于解释交易转化强弱。
-- macro_layer_status = valid；核心字段缺失 1/10（10%）。
-- macro_risk_state = valid。
-
-| 状态 | 数值 |
-| --- | ---: |
-| snapshot_date | 2026-06-09 |
-| macro_layer_status | valid |
-| risk_off_defensive | false |
-| ai_crowding_unwind | false |
-| biotech_relative_strength | true |
-| hk_innovation_vs_health | positive |
-
-| 资产 | 日度/窗口变化 |
-| --- | ---: |
-| QQQ_pct | 1.56% |
-| SOXX_pct | 5.87% |
-| SMH_pct | 5.00% |
-| XBI_pct | -0.19% |
-| IBB_pct | -0.90% |
-| XLV_pct | -0.24% |
-| XLP_pct | -0.44% |
-| XLU_pct | -1.87% |
-| US10Y_change | -0.09% |
-| DXY_pct | -0.34% |
-| HSTECH_pct | missing |
-| ETF_159557_pct | -0.76% |
-| ETF_159567_pct | 0.34% |
-| data_source | hk_cache+yahoo_chart |
-| source_status | QQQ_pct:success；SOXX_pct:success；SMH_pct:success；XBI_pct:success；IBB_pct:success；XLV_pct:success；XLP_pct:success；XLU_pct:success；US10Y_change:success；DXY_pct:success；HSTECH_pct:HTTPError: HTTP Error 404: Not Found；ETF_159557_pct:success；ETF_159567_pct:success |
-
-## 十、科技成长—创新药风格
-
-该模块独立于 S2 产业评分，只判断资金风格和独立性，不改 S2-01 至 S2-06 权重。
-
-- TECH_GROWTH_CORE = 588000.SH；创新药主对象 = 159567.SZ；医疗宽基对照 = 159557.SZ。
-- S2_INDUSTRY = 0.60；S2_STYLE = 0.34；S2_TOTAL = 0.54。
-- style_level = 被动承接；style_regime = NEUTRAL；data_status = valid。
-- negative_rotation_flag = false；missing_reason = none。
-- 结论：当前科技成长—创新药风格为中性：尚未形成稳定的独立主线或跷跷板证据。
-
-| 周期 | 159567收益 | TECH_GROWTH_CORE收益 | 159567 vs 科技成长 | 159567 vs 159557 | independence | 状态 |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| 1D | 1.19% | 4.02% | -2.83% | 0.16% | 0.70 | TECH_UP_BIO_UP_LAGS_TECH |
-| 3D | -2.79% | 9.38% | -12.17% | 0.03% | 0.15 | TECH_UP_BIO_DOWN |
-| 5D | 1.19% | 14.86% | -13.67% | 1.19% | 0.70 | TECH_UP_BIO_UP_LAGS_TECH |
-| 10D | -3.73% | 10.10% | -13.83% | 0.74% | 0.15 | TECH_UP_BIO_DOWN |
-| 20D | -13.81% | 8.44% | -22.25% | -1.68% | 0.15 | TECH_UP_BIO_DOWN |
-
-| 辅助指标 | 数值 |
-| --- | ---: |
-| corr_10d | 0.32 |
-| corr_20d | -0.05 |
-| corr_60d | 0.17 |
-| bio_avg_ret_when_tech_up_20d | -1.24% |
-| bio_avg_ret_when_tech_down_20d | -0.46% |
-| bio_excess_when_tech_up_20d | -3.95% |
-| bio_excess_when_tech_down_20d | 2.87% |
-| bio_avg_ret_when_tech_up_60d | 0.04% |
-| bio_avg_ret_when_tech_down_60d | -1.08% |
-| bio_excess_when_tech_up_60d | -2.36% |
-| bio_excess_when_tech_down_60d | 1.38% |
-
-- 60日累计收益图：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/charts/style_cumulative_2026-06-18.svg
-- 60日超额曲线图：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/charts/style_excess_2026-06-18.svg
-
-## 十一、AI/科技成长—创新药严格验证
-
-该模块使用最近最多250个共同有效交易日，分别验证科技成长虹吸、AI虹吸、AI回调轮动、A股领先港股和右侧确认，不进入原S1/S2正式评分。
-
-- 报告日期：2026-06-18；A股数据日期：20260618；港股数据日期：20260618；对应美股收盘日期：20260617。
-- TECH_GROWTH_CORE版本：TECH_GROWTH_CORE_V1；数据日期：20260618。
-- AI_CORE版本：AI_GLOBAL_V1；AI_CORE数据日期：20260617|20260618；有效样本数：211。
-- 科技成长状态：TECH_GROWTH_3D_PLUS_UP；AI状态：AI_INTERNAL_ROTATION；市场状态：RISK_ON。
-- 右侧确认评分：23.54；等级：无右侧；置信度：high；score_status=valid；feature_coverage=1.00000000。
-- 核心指数状态：VALID。
-- 当前命题状态：weakened；仓位动作标签：reduce。
-- 最强支持证据：159567当日跑赢159557 0.16%；159567当日绝对上涨 1.19%；S1-05广度达到46.67%。
-- 最强反对证据：科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83%；AI_CORE上涨时159567跑输AI_CORE -1.29%；S2_conversion_score=0.50，交易转化未确认。
-- 验证日报：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/ai_biotech_validation_report.md
-- 审计报告：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/ai_biotech_audit_report.md
+- 外部风格分析请参见 `ai_style_daily_report.md`；本S2报告仅保留产业验证口径。
 
 ## 九、HK_observation反证层_159567
 
@@ -418,7 +337,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 
 ## 十二、第四层：final_view_客观状态汇总
 
-- C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计中性，S1=0.61；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高；risk_off_defensive=false；ai_crowding_unwind=false；biotech_relative_strength=true；hk_innovation_vs_health=positive
+- C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计中性，S1=0.61；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
 - final_view_code = C
 - final_view_sub_code = C1
 - final_view_code_dict：A = 产业强 + 交易强；B = 产业中性 + 交易改善；C = 产业强 + 交易弱；D = 产业弱 + 交易弱；E = 数据不足 / 待验证。
@@ -429,7 +348,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 - hk_observation_state = latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。
 - hk_relative_state = 159567近5日强于159557
 - policy_risk_state = 政策风险升高
-- macro_risk_state = risk_off_defensive=false；ai_crowding_unwind=false；biotech_relative_strength=true；hk_innovation_vs_health=positive
+- macro_risk_state = moved_to_ai_style_report
 - main_positive_factors = BD频率符合预期；BD金额质量符合预期；产业事件侧得分0.65；HK_observation=latest_valid
 - main_negative_factors = S2_conversion_score=0.50，修复但未确认；Policy_Risk_Layer=risk_up
 - next_validation_dates = 
@@ -466,13 +385,11 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 - HK日期同步：latest_date_159567=20260618；latest_date_159557=20260618；common_trade_date=20260618。
 - S2-03b一致预期：missing；具备一致预期来源的业绩样本缺失。
 - S2-06商业化兑现质量：scorable_low_confidence；商业化核心公司指标达到最低评分覆盖，但完整度或来源置信度偏低：6/6；关键字段完整度=50%；非官方/媒体来源样本=4；缺失字段保留missing。
-- Macro_Risk_Layer：valid；核心字段缺失 1/10，macro_risk_state=valid。
 
 ### 不可判定
 - 159567 是否右侧：无。
 - 一致预期验证：S2-03b missing。
 - 商业化兑现完整性：S2-06 scorable_low_confidence。
-- 宏观资金环境：无。
 
 ## 十六、复核清单
 
