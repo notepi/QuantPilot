@@ -36,3 +36,22 @@
 - S1 indicators: /Users/pan/Desktop/research/0workspace/QuantPilot/data/indicators
 - S2 scores: /Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/s2_scores.csv
 - 有效样本数：211
+
+## 核心数据完整性
+
+- 核心指数状态：VALID
+- 数据源切换次数：0
+- 缺失交易日：none
+- 异常交易日：none
+- 跨源冲突：none
+
+| 标的 | 主数据源 | 备用源1 | 备用源2 | 复权口径 | 最新日期 | 缺失天数 | 状态 |
+| --- | --- | --- | --- | --- | --- | ---: | --- |
+| 588000.SH | market_daily | local_verified_cache | not_configured | unadjusted_close | 20260618 | 0 | valid |
+| 512760.SH | market_daily | local_verified_cache | not_configured | unadjusted_close | 20260618 | 0 | valid |
+| SMH | macro_market_daily | local_verified_cache | not_configured | unadjusted_close | 20260617 | 0 | valid |
+| SOXX | macro_market_daily | local_verified_cache | not_configured | unadjusted_close | 20260617 | 0 | valid |
+| QQQ | macro_market_daily | local_verified_cache | not_configured | unadjusted_close | 20260617 | 0 | valid |
+| 159567.SZ | market_daily | local_verified_cache | not_configured | unadjusted_close | 20260618 | 0 | valid |
+| 159557.SZ | market_daily | local_verified_cache | not_configured | unadjusted_close | 20260618 | 0 | valid |
+| 589720.SH | market_daily | local_verified_cache | not_configured | unadjusted_close | 20260618 | 0 | valid |

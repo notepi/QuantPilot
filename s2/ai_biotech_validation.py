@@ -48,6 +48,9 @@ class ValidationResult:
     right_side_score: float | None
     right_side_level: str
     score_confidence: str
+    score_status: str
+    feature_coverage: str
+    core_index_status: str
     thesis_state: str
     position_action: str
     strongest_support: list[str]
@@ -88,6 +91,14 @@ def run_ai_biotech_validation(
     state_stats = _ai_state_stats(data.frame, config)
     lead_stats = _a_share_lead_stats(data.frame, config)
     right_side = _right_side_score(data.frame, config)
+    if data.core_index_status == "DATA_ERROR":
+        right_side.update({
+            "right_side_score": "",
+            "right_side_level": "missing",
+            "confidence": "low",
+            "score_status": "DATA_ERROR",
+            "feature_coverage": right_side.get("feature_coverage", "missing"),
+        })
     falsification = _falsification(data.frame, window_stats, state_stats, lead_stats, right_side)
     position = _position_action(data.frame, right_side, falsification, config)
 
@@ -122,6 +133,9 @@ def run_ai_biotech_validation(
         right_side_score=_float_or_none(right_side.get("right_side_score")),
         right_side_level=str(right_side.get("right_side_level") or "missing"),
         score_confidence=str(right_side.get("confidence") or "low"),
+        score_status=str(right_side.get("score_status") or "missing"),
+        feature_coverage=str(right_side.get("feature_coverage") or "missing"),
+        core_index_status=data.core_index_status,
         thesis_state=str(falsification.get("thesis_state") or "unchanged"),
         position_action=str(position.get("action") or "insufficient_data"),
         strongest_support=_split_evidence(falsification.get("support_evidence")),
@@ -137,6 +151,8 @@ class ResearchData:
     frame: pd.DataFrame
     symbols: dict[str, str]
     missing: list[str]
+    core_index_status: str = "VALID"
+    data_quality: dict[str, Any] | None = None
 
 
 def _load_versions_payload(path: Path) -> dict[str, Any]:
@@ -162,6 +178,79 @@ def _core_version(payload: dict[str, Any], configured: str | None) -> dict[str, 
 
 def _versions_by_id(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {str(version.get("version_id")): version for version in payload.get("versions", [])}
+
+
+def _core_constituent_symbols(version: dict[str, Any], versions: dict[str, dict[str, Any]]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for item in version.get("constituents", []):
+        if item.get("version_ref"):
+            rows.extend(_core_constituent_symbols(versions.get(str(item["version_ref"]), {}), versions))
+            continue
+        symbol = item.get("symbol")
+        if symbol:
+            rows.append({
+                "symbol": str(symbol),
+                "source_table": str(item.get("source_table") or "market_daily"),
+                "weight": str(item.get("weight") or ""),
+            })
+    return rows
+
+
+def _core_data_quality(
+    market: pd.DataFrame,
+    macro: pd.DataFrame,
+    versions: dict[str, dict[str, Any]],
+    ai_version: dict[str, Any],
+    tech_version: dict[str, Any],
+    latest_date: str,
+) -> dict[str, Any]:
+    symbols = _core_constituent_symbols(tech_version, versions) + _core_constituent_symbols(ai_version, versions)
+    symbols.extend([
+        {"symbol": "159567.SZ", "source_table": "market_daily", "weight": "observation"},
+        {"symbol": "159557.SZ", "source_table": "market_daily", "weight": "benchmark"},
+        {"symbol": "589720.SH", "source_table": "market_daily", "weight": "temperature"},
+    ])
+    seen = set()
+    rows = []
+    missing = []
+    for item in symbols:
+        key = (item["symbol"], item["source_table"])
+        if key in seen:
+            continue
+        seen.add(key)
+        source_table = item["source_table"]
+        df = macro if source_table == "macro_market_daily" else market
+        s = _series(df, item["symbol"])
+        latest = str(s.index.max()) if not s.empty else "missing"
+        if source_table == "macro_market_daily":
+            usable = s[s.index.astype(str) < latest_date]
+            latest_for_asia = str(usable.index.max()) if not usable.empty else "missing"
+            status = "valid" if latest_for_asia != "missing" else "missing"
+            latest_effective = latest_for_asia
+        else:
+            status = "valid" if latest == latest_date else "missing"
+            latest_effective = latest
+        if status != "valid":
+            missing.append(item["symbol"])
+        rows.append({
+            "symbol": item["symbol"],
+            "primary_source": source_table,
+            "fallback_source_1": "local_verified_cache",
+            "fallback_source_2": "not_configured",
+            "adjustment_policy": "unadjusted_close",
+            "latest_date": latest_effective,
+            "missing_days": "0" if status == "valid" else "1+",
+            "status": status,
+        })
+    return {
+        "core_symbols": rows,
+        "core_missing_symbols": sorted(set(missing)),
+        "core_index_status": "DATA_ERROR" if missing else "VALID",
+        "source_switch_count": 0,
+        "missing_trade_dates": "none" if not missing else ",".join(sorted(set(missing))),
+        "abnormal_trade_dates": "none",
+        "cross_source_conflicts": "none",
+    }
 
 
 def _load_market(path: Path) -> pd.DataFrame:
@@ -239,42 +328,53 @@ def _weighted_core(
     versions: dict[str, dict[str, Any]],
     base_index: pd.Index,
 ) -> tuple[pd.Series, pd.Series, list[str]]:
-    parts = []
+    return_parts = []
     date_parts = []
-    weights = []
+    expected_weight = 0.0
     missing = []
     for item in version.get("constituents", []):
         ref = item.get("version_ref")
+        weight = float(item.get("weight") or 0)
+        if weight <= 0:
+            continue
+        expected_weight += weight
         if ref:
             child = versions.get(ref, {})
             child_series, child_dates, child_missing = _weighted_core(market, macro, child, versions, base_index)
             missing.extend(child_missing)
-            weight = float(item.get("weight") or 0)
             if child_series.empty or child_series.dropna().empty:
                 missing.append(f"{ref}_missing")
                 continue
-            child_series = child_series / child_series.dropna().iloc[0] * 100
-            parts.append(child_series.rename(ref) * weight)
+            return_parts.append(child_series.pct_change(fill_method=None).rename(ref) * weight)
             date_parts.append(child_dates.rename(ref))
-            weights.append(weight)
             continue
         symbol = item.get("symbol")
-        weight = float(item.get("weight") or 0)
-        if not symbol or weight <= 0:
+        if not symbol:
             continue
         s, dates = _source_series(market, macro, symbol, item.get("source_table"), base_index)
         if s.dropna().empty:
             missing.append(f"{symbol}_missing")
             continue
-        s = s / s.dropna().iloc[0] * 100
-        parts.append(s.rename(symbol) * weight)
+        return_parts.append(s.pct_change(fill_method=None).rename(symbol) * weight)
         date_parts.append(dates.rename(symbol))
-        weights.append(weight)
-    if not parts:
+    if not return_parts:
         return pd.Series(dtype="float64"), pd.Series(dtype="object"), missing
-    aligned = pd.concat(parts, axis=1).dropna(how="all")
-    available_weight = pd.concat([part.notna().astype(float) * weights[idx] for idx, part in enumerate(parts)], axis=1).sum(axis=1)
-    series = aligned.sum(axis=1) / available_weight.replace(0, float("nan"))
+    if abs(expected_weight - 1.0) > 1e-6:
+        missing.append(f"{version.get('version_id', 'core')}_weight_sum_{expected_weight:.6f}")
+    aligned_returns = pd.concat(return_parts, axis=1)
+    weighted_return = aligned_returns.sum(axis=1, min_count=len(return_parts))
+    levels = []
+    level = 100.0
+    has_started = False
+    for value in weighted_return:
+        if pd.isna(value):
+            levels.append(float("nan") if has_started else 100.0)
+            has_started = True
+            continue
+        level *= 1.0 + float(value)
+        levels.append(level)
+        has_started = True
+    series = pd.Series(levels, index=weighted_return.index, dtype="float64")
     dates_df = pd.concat(date_parts, axis=1) if date_parts else pd.DataFrame(index=series.index)
     latest_dates = dates_df.apply(lambda row: "|".join(sorted({str(x) for x in row.dropna() if str(x) != "missing"})) or "missing", axis=1)
     return series.astype("float64"), latest_dates.reindex(series.index), missing
@@ -406,7 +506,10 @@ def _build_research_frame(
     frame = frame.dropna(subset=["bio_ret", "health_ret", "ai_core_ret", "tech_core_ret"], how="any").tail(max_days)
     latest_date = str(frame.index.max()) if not frame.empty else (report_date or "")
     clean_report_date = f"{latest_date[:4]}-{latest_date[4:6]}-{latest_date[6:]}" if len(latest_date) == 8 else str(latest_date)
-    return ResearchData(clean_report_date, frame, dict(symbols), missing)
+    data_quality = _core_data_quality(market, macro, versions, ai_version, tech_version, latest_date)
+    missing.extend(data_quality.get("core_missing_symbols", []))
+    core_status = str(data_quality.get("core_index_status") or "VALID")
+    return ResearchData(clean_report_date, frame, dict(symbols), sorted(set(missing)), core_status, data_quality)
 
 
 def _period_return(close: pd.Series, days: int) -> pd.Series:
@@ -573,7 +676,10 @@ def _stats_row(values: pd.Series, window: int, name: str) -> dict[str, str]:
 def _max_drawdown(returns: pd.Series) -> float | None:
     if returns.empty:
         return None
-    equity = (1 + returns.fillna(0)).cumprod()
+    clean = pd.to_numeric(returns, errors="coerce").dropna()
+    if clean.empty:
+        return None
+    equity = (1 + clean).cumprod()
     dd = equity / equity.cummax() - 1
     return float(dd.min())
 
@@ -652,7 +758,7 @@ def _a_share_lead_stats(frame: pd.DataFrame, config: dict[str, Any]) -> list[dic
     s104 = frame.get("S1-04", pd.Series(index=frame.index, dtype="float64"))
     s105 = frame.get("S1-05", pd.Series(index=frame.index, dtype="float64"))
     threshold = float(config.get("ai_state_thresholds", {}).get("relative_lead_threshold", 0.01))
-    conditions = {
+    lead_conditions = {
         "S1_total_upcross_0.60": (s1.shift(1) < 0.60) & (s1 >= 0.60),
         "S1_total_2d_above_0.60": (s1 >= 0.60) & (s1.shift(1) >= 0.60),
         "S1_total_3d_above_0.60": (s1 >= 0.60) & (s1.shift(1) >= 0.60) & (s1.shift(2) >= 0.60),
@@ -662,54 +768,144 @@ def _a_share_lead_stats(frame: pd.DataFrame, config: dict[str, Any]) -> list[dic
         "S1-05_upcross_30pct": (s105.shift(1) < 0.30) & (s105 >= 0.30),
         "S1-05_upcross_40pct": (s105.shift(1) < 0.40) & (s105 >= 0.40),
         "S1-03_04_05_all_improve": (s103.diff() > 0) & (s104.diff() > 0) & (s105.diff() > 0),
-        "589720_single_day_leads_159567": (frame["a_bio_ret"] - frame["bio_ret"]) > threshold,
-        "589720_2d_leads_159567": ((frame["a_bio_ret"] - frame["bio_ret"]) > threshold) & ((frame["a_bio_ret"].shift(1) - frame["bio_ret"].shift(1)) > threshold),
-        "589720_strong_159567_not_follow": (frame["a_bio_ret"] > threshold) & (frame["bio_ret"] <= 0),
-        "589720_strong_159567_beats_159557": (frame["a_bio_ret"] > threshold) & (frame["bio_vs_health"] > 0),
+        "589720_positive_signal": frame["a_bio_ret"] > threshold,
+        "589720_vs_a_health_positive_signal": frame["a_bio_vs_health"] > threshold,
+    }
+    same_day_conditions = {
+        "589720_same_day_outperformance": (frame["a_bio_ret"] - frame["bio_ret"]) > threshold,
+        "589720_two_day_relative_strength": ((frame["a_bio_ret"] - frame["bio_ret"]) > threshold) & ((frame["a_bio_ret"].shift(1) - frame["bio_ret"].shift(1)) > threshold),
+        "589720_strong_159567_not_follow_same_day": (frame["a_bio_ret"] > threshold) & (frame["bio_ret"] <= 0),
+        "589720_strong_159567_beats_159557_same_day": (frame["a_bio_ret"] > threshold) & (frame["bio_vs_health"] > 0),
     }
     rows = []
-    for name, mask in conditions.items():
-        rows.extend(_forward_rows(frame, mask.fillna(False), name, "a_share_lead", config))
+    for name, mask in lead_conditions.items():
+        rows.extend(_forward_rows(frame, mask.fillna(False), name, "a_share_lead_signal", config))
+    for name, mask in same_day_conditions.items():
+        rows.extend(_forward_rows(frame, mask.fillna(False), name, "a_share_same_day_relative_strength", config))
     return rows
 
 
 def _right_side_score(frame: pd.DataFrame, config: dict[str, Any]) -> dict[str, str]:
     if frame.empty:
-        return {"date": "", "right_side_score": "", "right_side_level": "missing", "confidence": "low", "feature_contributions": "missing"}
+        return {"date": "", "right_side_score": "", "right_side_level": "missing", "confidence": "low", "feature_contributions": "missing", "score_status": "insufficient_data", "feature_coverage": "0.00000000", "missing_features": "all"}
     target_days = int(config.get("right_side", {}).get("target_forward_days", 5))
     features = _right_side_features(frame)
     target = frame["bio_close"].shift(-target_days) / frame["bio_close"] - 1
     target = target - (frame["health_close"].shift(-target_days) / frame["health_close"] - 1)
-    aligned = pd.concat([features.fillna(0.0), target.rename("target")], axis=1)
+    aligned = pd.concat([features, target.rename("target")], axis=1)
     aligned = aligned.dropna(subset=["target"])
     train_ratio = float(config.get("right_side", {}).get("train_ratio", 0.7))
     split = max(1, int(len(aligned) * train_ratio))
     train = aligned.iloc[:split]
     test = aligned.iloc[split:]
+    max_missing_rate = float(config.get("right_side", {}).get("max_feature_missing_rate", 0.30))
+    min_coverage = float(config.get("right_side", {}).get("min_current_feature_coverage", 0.75))
+    feature_cols = [
+        col for col in features.columns
+        if col in train and float(train[col].isna().mean()) <= max_missing_rate and train[col].notna().sum() >= 10
+    ]
+    if not feature_cols:
+        return {
+            "date": str(frame.index[-1]),
+            "right_side_score": "",
+            "right_side_level": "missing",
+            "confidence": "low",
+            "train_samples": str(len(train)),
+            "oos_samples": str(len(test)),
+            "oos_direction_accuracy": "",
+            "feature_contributions": "missing",
+            "duplicate_counting_check": "not_run",
+            "feature_coverage": "0.00000000",
+            "missing_features": "all",
+            "score_status": "insufficient_predictive_signal",
+        }
+    medians = train[feature_cols].median(numeric_only=True)
+    train_x = train[feature_cols].fillna(medians)
+    test_x = test[feature_cols].fillna(medians)
+    missing_indicator_cols = []
+    for col in feature_cols:
+        if train[col].isna().any():
+            indicator = f"{col}_missing"
+            missing_indicator_cols.append(indicator)
+            train_x[indicator] = train[col].isna().astype(float)
+            test_x[indicator] = test[col].isna().astype(float)
+    model_cols = list(train_x.columns)
     raw_weights: dict[str, float] = {}
-    for col in features.columns:
-        if len(train) < 10 or train[col].std() == 0:
+    for col in model_cols:
+        if len(train_x) < 10 or train_x[col].std() == 0:
             raw_weights[col] = 0.0
             continue
-        corr = train[col].corr(train["target"])
+        corr = train_x[col].corr(train["target"])
         raw_weights[col] = max(0.0, float(corr)) if pd.notna(corr) else 0.0
     if sum(raw_weights.values()) <= 0:
-        raw_weights = {col: 1.0 for col in features.columns}
+        return {
+            "date": str(frame.index[-1]),
+            "right_side_score": "",
+            "right_side_level": "missing",
+            "confidence": "low",
+            "train_samples": str(len(train)),
+            "oos_samples": str(len(test)),
+            "oos_direction_accuracy": "",
+            "feature_contributions": "missing",
+            "duplicate_counting_check": "all feature correlations are non-positive; no equal-weight fallback used.",
+            "feature_coverage": "0.00000000",
+            "missing_features": "insufficient_predictive_signal",
+            "score_status": "insufficient_predictive_signal",
+        }
     tech_ai_corr = None
-    if {"tech_growth_not_crowding", "ai_not_crowding"}.issubset(features.columns):
-        tech_ai_corr = features["tech_growth_not_crowding"].corr(features["ai_not_crowding"])
+    if {"tech_growth_not_crowding", "ai_not_crowding"}.issubset(train_x.columns):
+        tech_ai_corr = train_x["tech_growth_not_crowding"].corr(train_x["ai_not_crowding"])
         if pd.notna(tech_ai_corr) and abs(float(tech_ai_corr)) >= 0.80:
             raw_weights["tech_growth_not_crowding"] *= 0.5
             raw_weights["ai_not_crowding"] *= 0.5
     total = sum(raw_weights.values())
     weights = {col: value / total for col, value in raw_weights.items()}
-    current = features.iloc[-1].fillna(0.0)
-    score = 100.0 * sum(float(current[col]) * weights[col] for col in features.columns)
-    predictions = (test[features.columns].fillna(0.0).mul(pd.Series(weights)).sum(axis=1) >= 0.5) if not test.empty else pd.Series(dtype=bool)
+    current_raw = features.iloc[-1]
+    valid_current = [col for col in feature_cols if pd.notna(current_raw.get(col))]
+    missing_current = [col for col in feature_cols if col not in valid_current]
+    coverage = len(valid_current) / len(feature_cols) if feature_cols else 0.0
+    if coverage < min_coverage:
+        return {
+            "date": str(frame.index[-1]),
+            "right_side_score": "",
+            "right_side_level": "missing",
+            "confidence": "low",
+            "train_samples": str(len(train)),
+            "oos_samples": str(len(test)),
+            "oos_direction_accuracy": "",
+            "feature_contributions": "missing",
+            "duplicate_counting_check": "not_run_due_to_low_feature_coverage",
+            "feature_coverage": f"{coverage:.8f}",
+            "missing_features": ",".join(missing_current),
+            "score_status": "insufficient_data",
+        }
+    effective_weight_total = sum(weights[col] for col in valid_current if col in weights)
+    if effective_weight_total <= 0:
+        return {
+            "date": str(frame.index[-1]),
+            "right_side_score": "",
+            "right_side_level": "missing",
+            "confidence": "low",
+            "train_samples": str(len(train)),
+            "oos_samples": str(len(test)),
+            "oos_direction_accuracy": "",
+            "feature_contributions": "missing",
+            "duplicate_counting_check": "current effective feature weight is zero.",
+            "feature_coverage": f"{coverage:.8f}",
+            "missing_features": ",".join(missing_current) if missing_current else "none",
+            "score_status": "insufficient_predictive_signal",
+        }
+    effective_weights = {col: weights[col] / effective_weight_total for col in valid_current if col in weights and effective_weight_total > 0}
+    score = 100.0 * sum(float(current_raw[col]) * effective_weights[col] for col in effective_weights)
+    predictions = (test_x[model_cols].mul(pd.Series(weights)).sum(axis=1) >= 0.5) if not test.empty else pd.Series(dtype=bool)
     actual = test["target"] > 0 if not test.empty else pd.Series(dtype=bool)
     oos_acc = float((predictions == actual).mean()) if len(test) else None
+    baseline_up = float(actual.mean()) if len(actual) else None
+    baseline_always = max(baseline_up or 0.0, 1.0 - (baseline_up or 0.0)) if baseline_up is not None else None
+    benchmark_excess = None if oos_acc is None or baseline_always is None else oos_acc - baseline_always
     confidence = "high" if len(train) >= 120 and len(test) >= 40 and (oos_acc or 0) >= 0.55 else "medium" if len(train) >= 60 and len(test) >= 20 else "low"
-    contributions = {col: float(current[col]) * weights[col] * 100 for col in features.columns}
+    score_status = "valid" if benchmark_excess is not None and benchmark_excess > 0 else "descriptive_only"
+    contributions = {col: float(current_raw[col]) * effective_weights[col] * 100 for col in effective_weights}
     return {
         "date": str(frame.index[-1]),
         "right_side_score": f"{score:.2f}",
@@ -718,8 +914,14 @@ def _right_side_score(frame: pd.DataFrame, config: dict[str, Any]) -> dict[str, 
         "train_samples": str(len(train)),
         "oos_samples": str(len(test)),
         "oos_direction_accuracy": _fmt_num(oos_acc),
+        "baseline_direction_accuracy": _fmt_num(baseline_always),
+        "benchmark_excess_accuracy": _fmt_num(benchmark_excess),
         "feature_contributions": "; ".join(f"{k}={v:.2f}" for k, v in sorted(contributions.items(), key=lambda item: item[1], reverse=True)),
         "duplicate_counting_check": f"1d/5d/10d relative strength collapsed into one bio_relative_strength feature; S1 total and components are grouped; TECH_GROWTH_CORE and AI_CORE corr={_fmt_num(float(tech_ai_corr) if pd.notna(tech_ai_corr) else None)}, high-correlation pairs are half-weighted.",
+        "feature_coverage": f"{coverage:.8f}",
+        "missing_features": ",".join(missing_current) if missing_current else "none",
+        "score_status": score_status,
+        "missing_indicator_features": ",".join(missing_indicator_cols) if missing_indicator_cols else "none",
     }
 
 
@@ -813,9 +1015,10 @@ def _falsification(
 def _position_action(frame: pd.DataFrame, right_side: dict[str, str], falsification: dict[str, str], config: dict[str, Any]) -> dict[str, str]:
     score = _float_or_none(right_side.get("right_side_score"))
     confidence = right_side.get("confidence", "low")
+    score_status = right_side.get("score_status", "missing")
     opposition = _split_evidence(falsification.get("opposition_evidence"))
     latest = frame.iloc[-1] if not frame.empty else {}
-    if score is None:
+    if score is None or score_status in {"insufficient_data", "insufficient_predictive_signal", "DATA_ERROR"}:
         action = "insufficient_data"
     elif confidence == "low":
         action = "hold" if score >= 50 else "insufficient_data"
@@ -831,7 +1034,7 @@ def _position_action(frame: pd.DataFrame, right_side: dict[str, str], falsificat
         action = "hold"
     return {
         "action": action,
-        "basis": f"right_side_score={right_side.get('right_side_score') or 'missing'}; confidence={confidence}; thesis_state={falsification.get('thesis_state')}",
+        "basis": f"right_side_score={right_side.get('right_side_score') or 'missing'}; score_status={score_status}; confidence={confidence}; thesis_state={falsification.get('thesis_state')}",
         "next_increase_condition": "右侧确认评分>=70、置信度不低、159567相对159557和量能同时确认、反对证据少于2条。",
         "next_reduce_condition": "AI回调后159567仍不涨或跑输159557，或右侧评分<30，或S2_conversion继续低于0.60。",
         "strongest_opposition": falsification.get("opposition_evidence", ""),
@@ -849,6 +1052,7 @@ def _audit_system(
     s2_scores_path: Path,
 ) -> dict[str, Any]:
     frame = data.frame
+    quality = data.data_quality or {}
     return {
         "ai_core_constituents": ai_version.get("constituents", []),
         "ai_core_version": ai_version.get("version_id"),
@@ -879,6 +1083,12 @@ def _audit_system(
         "indicators_dir": str(indicators_dir),
         "s2_scores_path": str(s2_scores_path),
         "sample_count": str(len(frame)),
+        "core_index_status": data.core_index_status,
+        "core_symbols": quality.get("core_symbols", []),
+        "source_switch_count": quality.get("source_switch_count", 0),
+        "missing_trade_dates": quality.get("missing_trade_dates", "missing"),
+        "abnormal_trade_dates": quality.get("abnormal_trade_dates", "missing"),
+        "cross_source_conflicts": quality.get("cross_source_conflicts", "missing"),
     }
 
 
@@ -923,6 +1133,21 @@ def _render_audit_report(audit: dict[str, Any]) -> str:
         f"- S2 scores: {audit['s2_scores_path']}",
         f"- 有效样本数：{audit['sample_count']}",
         "",
+        "## 核心数据完整性",
+        "",
+        f"- 核心指数状态：{audit['core_index_status']}",
+        f"- 数据源切换次数：{audit['source_switch_count']}",
+        f"- 缺失交易日：{audit['missing_trade_dates']}",
+        f"- 异常交易日：{audit['abnormal_trade_dates']}",
+        f"- 跨源冲突：{audit['cross_source_conflicts']}",
+        "",
+        "| 标的 | 主数据源 | 备用源1 | 备用源2 | 复权口径 | 最新日期 | 缺失天数 | 状态 |",
+        "| --- | --- | --- | --- | --- | --- | ---: | --- |",
+        *[
+            f"| {row.get('symbol')} | {row.get('primary_source')} | {row.get('fallback_source_1')} | {row.get('fallback_source_2')} | {row.get('adjustment_policy')} | {row.get('latest_date')} | {row.get('missing_days')} | {row.get('status')} |"
+            for row in audit.get("core_symbols", [])
+        ],
+        "",
     ]
     return "\n".join(lines)
 
@@ -944,6 +1169,9 @@ def _render_validation_report(
     window_summary = _window_summary_rows(window_stats)
     ai_down_rows = [row for row in state_stats if row["condition"] in {"AI_SINGLE_DOWN", "AI_2D_DOWN", "AI_3D_PLUS_DOWN", "AI_DOWN_RISK_ON", "AI_DOWN_RISK_OFF"} and row["horizon_days"] == "0"]
     lead_best = _best_lead_row(lead_stats)
+    core_rows = (data.data_quality or {}).get("core_symbols", [])
+    primary_sources = "; ".join(f"{row.get('symbol')}={row.get('primary_source')}" for row in core_rows) or "missing"
+    fallback_sources = "; ".join(f"{row.get('symbol')}={row.get('fallback_source_1')}" for row in core_rows) or "missing"
     lines = [
         "# AI/科技成长—创新药风格验证日报",
         "",
@@ -966,9 +1194,24 @@ def _render_validation_report(
         f"- 创新药相对科技成长：{_fmt_pct(latest.get('bio_vs_tech'))}",
         f"- 创新药相对AI_CORE：{_fmt_pct(latest.get('bio_vs_ai'))}",
         f"- 589720情绪状态：{_a_temp_state(latest)}",
-        f"- A股是否领先港股：{lead_best.get('condition', '未验证') if lead_best else '未验证'}",
+        f"- A股领先候选：{lead_best.get('condition', '未验证') if lead_best else '未验证'}",
         f"- 右侧确认评分：{right_side.get('right_side_score', 'missing')}；{right_side.get('right_side_level', 'missing')}",
         f"- 评分置信度：{right_side.get('confidence', 'low')}",
+        f"- score_status：{right_side.get('score_status', 'missing')}；feature_coverage：{right_side.get('feature_coverage', 'missing')}",
+        f"- 核心指数状态：{data.core_index_status}",
+        "",
+        "## 2A. 数据质量",
+        "",
+        f"- 核心数据完整性：{data.core_index_status}",
+        f"- 使用主数据源：{primary_sources}",
+        f"- 使用备用数据源：{fallback_sources}",
+        f"- 数据源切换次数：{(data.data_quality or {}).get('source_switch_count', 'missing')}",
+        f"- 缺失交易日：{(data.data_quality or {}).get('missing_trade_dates', 'missing')}",
+        f"- 异常交易日：{(data.data_quality or {}).get('abnormal_trade_dates', 'missing')}",
+        f"- 跨源冲突：{(data.data_quality or {}).get('cross_source_conflicts', 'missing')}",
+        f"- 特征覆盖率：{right_side.get('feature_coverage', 'missing')}",
+        f"- 核心指数状态：{data.core_index_status}",
+        f"- 评分状态：{right_side.get('score_status', 'missing')}",
         "",
         "## 3. 多窗口结论",
         "",
@@ -998,7 +1241,7 @@ def _render_validation_report(
         "",
         "## 7. A股领先港股验证",
         "",
-        f"- 589720是否先动：{lead_best.get('condition', 'missing') if lead_best else 'missing'}",
+        f"- 当前最佳历史lead_signal：{lead_best.get('condition', 'missing') if lead_best else 'missing'}",
         f"- S1是否先动：{_s1_lead_text(lead_stats)}",
         f"- 可能领先窗口：{lead_best.get('horizon_days', 'missing') if lead_best else 'missing'}日",
         f"- 历史样本数：{lead_best.get('sample_count', '0') if lead_best else '0'}",
@@ -1062,7 +1305,12 @@ def _stability_text(*rows: dict[str, str]) -> str:
 
 
 def _best_lead_row(rows: list[dict[str, str]]) -> dict[str, str]:
-    candidates = [row for row in rows if row.get("horizon_days") in {"1", "2", "3", "5"} and int(row.get("sample_count") or 0) >= 3]
+    candidates = [
+        row for row in rows
+        if row.get("condition_type") == "a_share_lead_signal"
+        and row.get("horizon_days") in {"1", "2", "3", "5"}
+        and int(row.get("sample_count") or 0) >= 3
+    ]
     if not candidates:
         return {}
     return max(candidates, key=lambda row: _float_or_none(row.get("bio_vs_health_win_rate")) or -1)
@@ -1089,7 +1337,7 @@ def _a_temp_state(latest: pd.Series) -> str:
 
 
 def _s1_lead_text(rows: list[dict[str, str]]) -> str:
-    hits = [row for row in rows if row["condition"].startswith("S1") and int(row.get("sample_count") or 0) >= 3]
+    hits = [row for row in rows if row.get("condition_type") == "a_share_lead_signal" and row["condition"].startswith("S1") and int(row.get("sample_count") or 0) >= 3]
     if not hits:
         return "未表现出稳定领先样本"
     best = max(hits, key=lambda row: _float_or_none(row.get("bio_vs_health_win_rate")) or -1)
@@ -1098,9 +1346,9 @@ def _s1_lead_text(rows: list[dict[str, str]]) -> str:
 
 def _current_lead_valid(latest: pd.Series) -> str:
     if latest.get("a_bio_ret", 0) > 0 and latest.get("bio_ret", 0) <= 0:
-        return "A股先动但159567未跟随，不能确认领先有效。"
+        return "A股创新药同日较强但159567未跟随，不能称为领先有效。"
     if latest.get("a_bio_ret", 0) > 0 and latest.get("bio_vs_health", 0) > 0:
-        return "A股与159567同步偏强，但不等于A股领先。"
+        return "A股与159567同步偏强，只能说明同日情绪共振，不等于A股领先。"
     return "未确认。"
 
 
@@ -1133,7 +1381,7 @@ def _a_lead_thesis_text(best: dict[str, str]) -> str:
     if not best:
         return "unchanged：样本不足。"
     win = _float_or_none(best.get("bio_vs_health_win_rate"))
-    if win is not None and win >= 0.60 and int(best.get("sample_count") or 0) >= 10:
+    if win is not None and win >= 0.60 and int(best.get("sample_count") or 0) >= 20:
         return "strengthened：历史样本显示一定领先价值。"
     return "weakened：589720及S1对159567未表现出稳定领先价值，只适合作为同步情绪温度计。"
 

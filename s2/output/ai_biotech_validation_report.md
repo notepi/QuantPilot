@@ -17,11 +17,26 @@
 - 市场状态：RISK_ON
 - 创新药相对医疗：0.16%
 - 创新药相对科技成长：-2.83%
-- 创新药相对AI_CORE：-0.88%
+- 创新药相对AI_CORE：-1.29%
 - 589720情绪状态：589720强于A股医疗宽基
-- A股是否领先港股：589720_2d_leads_159567
-- 右侧确认评分：52.29；初步右侧
-- 评分置信度：medium
+- A股领先候选：S1-04_upcross_1.00x
+- 右侧确认评分：23.54；无右侧
+- 评分置信度：high
+- score_status：valid；feature_coverage：1.00000000
+- 核心指数状态：VALID
+
+## 2A. 数据质量
+
+- 核心数据完整性：VALID
+- 使用主数据源：588000.SH=market_daily; 512760.SH=market_daily; SMH=macro_market_daily; SOXX=macro_market_daily; QQQ=macro_market_daily; 159567.SZ=market_daily; 159557.SZ=market_daily; 589720.SH=market_daily
+- 使用备用数据源：588000.SH=local_verified_cache; 512760.SH=local_verified_cache; SMH=local_verified_cache; SOXX=local_verified_cache; QQQ=local_verified_cache; 159567.SZ=local_verified_cache; 159557.SZ=local_verified_cache; 589720.SH=local_verified_cache
+- 数据源切换次数：0
+- 缺失交易日：none
+- 异常交易日：none
+- 跨源冲突：none
+- 特征覆盖率：1.00000000
+- 核心指数状态：VALID
+- 评分状态：valid
 
 ## 3. 多窗口结论
 
@@ -41,7 +56,7 @@
 ## 5. 最强反对证据
 
 - 科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83%
-- AI_CORE上涨时159567跑输AI_CORE -0.88%
+- AI_CORE上涨时159567跑输AI_CORE -1.29%
 - S2_conversion_score=0.50，交易转化未确认
 
 ## 6. 科技成长/AI回调验证
@@ -53,33 +68,33 @@
 - 159567绝对收益：1.19%
 - 159567相对159557超额：0.16%
 - 159567相对科技成长超额：-2.83%
-- 159567相对AI_CORE超额：-0.88%
+- 159567相对AI_CORE超额：-1.29%
 - 是否属于有效轮动：当前AI未回调，不适用。
 
 ## 7. A股领先港股验证
 
-- 589720是否先动：589720_2d_leads_159567
+- 当前最佳历史lead_signal：S1-04_upcross_1.00x
 - S1是否先动：S1-04_upcross_1.00x，样本10，胜率0.80000000
-- 可能领先窗口：1日
-- 历史样本数：6
-- 历史胜率：1.00000000
-- 当前是否有效：A股与159567同步偏强，但不等于A股领先。
+- 可能领先窗口：2日
+- 历史样本数：10
+- 历史胜率：0.80000000
+- 当前是否有效：A股与159567同步偏强，只能说明同日情绪共振，不等于A股领先。
 
 ## 8. 当前命题
 
 - AI资金虹吸假设：strengthened：AI_CORE上涨且159567跑输AI_CORE。
 - 科技成长虹吸假设：strengthened：科技成长上涨且159567跑输TECH_GROWTH_CORE。
-- 创新药接力假设：unchanged：仍需确认。
+- 创新药接力假设：weakened：右侧评分不足。
 - A股领先港股假设：weakened：589720及S1对159567未表现出稳定领先价值，只适合作为同步情绪温度计。
 - 状态：weakened
 
 ## 9. 仓位建议
 
-- 建议：hold
-- 理由：right_side_score=52.29; confidence=medium; thesis_state=weakened
+- 建议：reduce
+- 理由：right_side_score=23.54; score_status=valid; confidence=high; thesis_state=weakened
 - 下一增加条件：右侧确认评分>=70、置信度不低、159567相对159557和量能同时确认、反对证据少于2条。
 - 下一减少条件：AI回调后159567仍不涨或跑输159557，或右侧评分<30，或S2_conversion继续低于0.60。
-- 当前最强反对证据：科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83% | AI_CORE上涨时159567跑输AI_CORE -0.88% | S2_conversion_score=0.50，交易转化未确认
+- 当前最强反对证据：科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83% | AI_CORE上涨时159567跑输AI_CORE -1.29% | S2_conversion_score=0.50，交易转化未确认
 
 ## 10. 当前仍不能确认的事项
 

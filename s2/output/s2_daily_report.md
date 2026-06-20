@@ -21,7 +21,7 @@
 - S1改善主要来自资金/份额流入，非价格强度和广度扩散。
 - S2正式量化等级：adjusted_score=0.60，等级为符合预期。
 - S2_INDUSTRY=0.60；S2_STYLE=0.34；S2_TOTAL=0.54；style_regime=NEUTRAL。
-- AI—创新药严格验证：右侧确认评分=52.29；命题状态=weakened；仓位动作标签=hold。
+- AI—创新药严格验证：右侧确认评分=23.54；命题状态=weakened；仓位动作标签=reduce。
 - S2产业事件侧得分：S2_event_score=0.65，状态为符合预期。
 - S2交易转化侧得分：S2_conversion_score=0.50，状态为交易转化修复中，但未确认。
 - BD联动解释：BD频率与金额质量均符合预期，说明产业事件侧较前期改善；但该改善尚未通过S2-04和S2-05转化为交易确认。
@@ -253,7 +253,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | final_data_source | citydata_fund_daily |
 | 159567_audit_final_source | processed |
 | 159567_audit_final_source_reason | processed table has latest symbol row |
-| 159567_audit_fetched_at | 2026-06-20T09:11:36 |
+| 159567_audit_fetched_at | 2026-06-20T21:49:33 |
 | 159567_audit_data_quality | latest_valid |
 | 159567_audit_can_use_for_latest_signal | true |
 | 159567_audit_raw_latest_date | missing |
@@ -261,7 +261,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | 159567_audit_processed_latest_date | 20260618 |
 | 159557_audit_final_source | processed |
 | 159557_audit_final_source_reason | processed table has latest symbol row |
-| 159557_audit_fetched_at | 2026-06-20T09:11:36 |
+| 159557_audit_fetched_at | 2026-06-20T21:49:34 |
 | 159557_audit_data_quality | latest_valid |
 | 159557_audit_can_use_for_latest_signal | true |
 | 159557_audit_raw_latest_date | missing |
@@ -385,10 +385,11 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 - TECH_GROWTH_CORE版本：TECH_GROWTH_CORE_V1；数据日期：20260618。
 - AI_CORE版本：AI_GLOBAL_V1；AI_CORE数据日期：20260617|20260618；有效样本数：211。
 - 科技成长状态：TECH_GROWTH_3D_PLUS_UP；AI状态：AI_INTERNAL_ROTATION；市场状态：RISK_ON。
-- 右侧确认评分：52.29；等级：初步右侧；置信度：medium。
-- 当前命题状态：weakened；仓位动作标签：hold。
+- 右侧确认评分：23.54；等级：无右侧；置信度：high；score_status=valid；feature_coverage=1.00000000。
+- 核心指数状态：VALID。
+- 当前命题状态：weakened；仓位动作标签：reduce。
 - 最强支持证据：159567当日跑赢159557 0.16%；159567当日绝对上涨 1.19%；S1-05广度达到46.67%。
-- 最强反对证据：科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83%；AI_CORE上涨时159567跑输AI_CORE -0.88%；S2_conversion_score=0.50，交易转化未确认。
+- 最强反对证据：科技成长上涨时159567跑输TECH_GROWTH_CORE -2.83%；AI_CORE上涨时159567跑输AI_CORE -1.29%；S2_conversion_score=0.50，交易转化未确认。
 - 验证日报：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/ai_biotech_validation_report.md
 - 审计报告：/Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/ai_biotech_audit_report.md
 

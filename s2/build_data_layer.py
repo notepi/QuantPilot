@@ -29,6 +29,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 S2_DATA_DIR = PROJECT_ROOT / "s2" / "data"
 S2_OUTPUT_DIR = PROJECT_ROOT / "s2" / "output"
 REPORTS_DIR = PROJECT_ROOT / "reports"
+CORE_SOURCE_AUDIT_PATH = S2_OUTPUT_DIR / "data_audit" / "core_market_source_audit.csv"
 
 A_STOCKS = [
     "600276.SH", "603259.SH", "688192.SH", "688235.SH", "688506.SH",
@@ -56,6 +57,17 @@ MACRO_SYMBOLS = {
     "DXY": "DX-Y.NYB",
     "HSTECH": "^HSTECH",
 }
+STOOQ_SYMBOLS = {
+    "QQQ": "qqq.us",
+    "SOXX": "soxx.us",
+    "SMH": "smh.us",
+    "XBI": "xbi.us",
+    "IBB": "ibb.us",
+    "XLV": "xlv.us",
+    "XLP": "xlp.us",
+    "XLU": "xlu.us",
+}
+CORE_MARKET_SYMBOLS = {"588000.SH", "512760.SH", "SMH", "SOXX", "QQQ"}
 
 MARKET_FIELDS = [
     "symbol", "trade_date", "open", "high", "low", "close", "pct_chg",
@@ -204,7 +216,7 @@ def _fetch_etf(symbol: str) -> pd.DataFrame:
         df = ak.fund_etf_hist_em(symbol=short, period="daily", start_date=start, end_date=end, adjust="")
         return _normalise_akshare_cn(df, symbol, "fund_etf_hist_em", "akshare://fund_etf_hist_em", "exchange_traded_fund")
     except Exception as exc:  # noqa: BLE001
-        if symbol in {"159567.SZ", "159557.SZ", "512010.SH", "512170.SH"}:
+        if symbol in {"159567.SZ", "159557.SZ", "512010.SH", "512170.SH", "588000.SH", "512760.SH"}:
             try:
                 df = _fetch_tencent_etf_daily(short, limit=520).rename(columns={"date": "trade_date", "volume": "vol"})
                 normalised = _normalise_citydata(df, symbol, "tencent_fqkline", "exchange_traded_fund", f"akshare_failed: {type(exc).__name__}: {str(exc)[:120]}")
@@ -308,17 +320,154 @@ def _fetch_yahoo_daily(symbol: str, label: str) -> pd.DataFrame:
         }])
 
 
+def _fetch_stooq_daily(label: str) -> pd.DataFrame:
+    stooq_symbol = STOOQ_SYMBOLS.get(label)
+    fetched_at = _now()
+    if not stooq_symbol:
+        return pd.DataFrame([{
+            "symbol": label,
+            "trade_date": "",
+            "close": "",
+            "source_name": "stooq",
+            "source_api": "daily_csv",
+            "source_url": "",
+            "fetched_at": fetched_at,
+            "source_status": "failed",
+            "error_message": "no_stooq_symbol_mapping",
+        }])
+    url = f"https://stooq.com/q/d/l/?s={urllib.parse.quote(stooq_symbol)}&i=d"
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            df = pd.read_csv(response)
+        if df.empty or "Date" not in df.columns or "Close" not in df.columns:
+            raise ValueError("empty stooq result")
+        out = pd.DataFrame()
+        out["symbol"] = label
+        out["trade_date"] = pd.to_datetime(df["Date"], errors="coerce").dt.strftime("%Y%m%d")
+        out["close"] = pd.to_numeric(df["Close"], errors="coerce")
+        out["source_name"] = "stooq"
+        out["source_api"] = "daily_csv"
+        out["source_url"] = url
+        out["fetched_at"] = fetched_at
+        out["source_status"] = "success"
+        out["error_message"] = ""
+        return out.dropna(subset=["trade_date", "close"])
+    except Exception as exc:  # noqa: BLE001
+        return pd.DataFrame([{
+            "symbol": label,
+            "trade_date": "",
+            "close": "",
+            "source_name": "stooq",
+            "source_api": "daily_csv",
+            "source_url": url,
+            "fetched_at": fetched_at,
+            "source_status": "failed",
+            "error_message": f"{type(exc).__name__}: {str(exc)[:160]}",
+        }])
+
+
+def _fresh_cache_rows(path: Path, label: str, max_calendar_lag: int = 7) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_csv(path, dtype={"symbol": str, "trade_date": str})
+    rows = df[df["symbol"].astype(str) == label].copy()
+    rows = rows[rows["trade_date"].astype(str) != ""]
+    if rows.empty:
+        return pd.DataFrame()
+    latest = str(rows["trade_date"].max())
+    try:
+        lag = (datetime.now() - datetime.strptime(latest, "%Y%m%d")).days
+    except ValueError:
+        return pd.DataFrame()
+    if lag > max_calendar_lag:
+        return pd.DataFrame()
+    rows["source_name"] = "local_verified_cache"
+    rows["source_api"] = rows.get("source_api", "cache")
+    rows["source_status"] = "success"
+    rows["error_message"] = f"cache_lag_days={lag}"
+    rows["fetched_at"] = _now()
+    return rows
+
+
+def _fetch_macro_with_fallback(symbol: str, label: str, cache_path: Path) -> tuple[pd.DataFrame, dict[str, str]]:
+    primary = _fetch_yahoo_daily(symbol, label)
+    primary_ok = not primary.empty and (primary["trade_date"].astype(str) != "").sum() >= 200
+    if primary_ok:
+        return primary, {
+            "symbol": label,
+            "requested_date_range": "2y",
+            "primary_source": "yahoo",
+            "fallback_source": "",
+            "failure_reason": "",
+            "rows_received": str(len(primary[primary["trade_date"].astype(str) != ""])),
+            "latest_trade_date": str(primary["trade_date"].max()),
+            "missing_dates": "",
+            "validation_result": "primary_success",
+        }
+    fallback = _fetch_stooq_daily(label)
+    fallback_ok = not fallback.empty and (fallback["trade_date"].astype(str) != "").sum() >= 200
+    if fallback_ok:
+        return fallback, {
+            "symbol": label,
+            "requested_date_range": "all_available",
+            "primary_source": "yahoo",
+            "fallback_source": "stooq",
+            "failure_reason": str(primary.get("error_message", pd.Series(["primary_insufficient"])).iloc[0])[:160],
+            "rows_received": str(len(fallback[fallback["trade_date"].astype(str) != ""])),
+            "latest_trade_date": str(fallback["trade_date"].max()),
+            "missing_dates": "",
+            "validation_result": "fallback_success",
+        }
+    cache = _fresh_cache_rows(cache_path, label)
+    cache_ok = not cache.empty
+    if cache_ok:
+        return cache, {
+            "symbol": label,
+            "requested_date_range": "cache",
+            "primary_source": "yahoo",
+            "fallback_source": "stooq|local_verified_cache",
+            "failure_reason": "network_sources_failed_or_insufficient",
+            "rows_received": str(len(cache)),
+            "latest_trade_date": str(cache["trade_date"].max()),
+            "missing_dates": "",
+            "validation_result": "cache_success",
+        }
+    return fallback if not fallback.empty else primary, {
+        "symbol": label,
+        "requested_date_range": "2y",
+        "primary_source": "yahoo",
+        "fallback_source": "stooq|local_verified_cache",
+        "failure_reason": "all_sources_failed_or_insufficient",
+        "rows_received": "0",
+        "latest_trade_date": "",
+        "missing_dates": "unknown",
+        "validation_result": "failed",
+    }
+
+
 def build_macro_market_daily() -> Path:
-    frames = [_fetch_yahoo_daily(symbol, label) for label, symbol in MACRO_SYMBOLS.items()]
+    path = PROCESSED_DIR / "macro_market_daily.csv"
+    frames = []
+    audit_rows = []
+    for label, symbol in MACRO_SYMBOLS.items():
+        if label in {"SMH", "SOXX", "QQQ"}:
+            frame, audit = _fetch_macro_with_fallback(symbol, label, path)
+            frames.append(frame)
+            audit_rows.append(audit)
+        else:
+            frames.append(_fetch_yahoo_daily(symbol, label))
     df = pd.concat(frames, ignore_index=True)
     if not df.empty:
         df = df.sort_values(["symbol", "trade_date"])
-        df["pct_1d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change()
-        df["pct_5d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change(5)
-        df["pct_10d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change(10)
-    path = PROCESSED_DIR / "macro_market_daily.csv"
+        df["pct_1d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change(fill_method=None)
+        df["pct_5d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change(5, fill_method=None)
+        df["pct_10d"] = pd.to_numeric(df["close"], errors="coerce").groupby(df["symbol"]).pct_change(10, fill_method=None)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
+    if audit_rows:
+        CORE_SOURCE_AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(audit_rows).to_csv(CORE_SOURCE_AUDIT_PATH, index=False)
     return path
 
 

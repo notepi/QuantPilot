@@ -1,0 +1,4 @@
+symbol,requested_date_range,primary_source,fallback_source,failure_reason,rows_received,latest_trade_date,missing_dates,validation_result
+QQQ,2y,yahoo,,,501,20260618,,primary_success
+SOXX,2y,yahoo,,,501,20260618,,primary_success
+SMH,2y,yahoo,,,501,20260618,,primary_success

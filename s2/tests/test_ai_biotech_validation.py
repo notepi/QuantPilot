@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
-from s2.ai_biotech_validation import run_ai_biotech_validation
+from s2.ai_biotech_validation import _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
 
 
 def _write_config(path: Path) -> None:
@@ -267,3 +268,107 @@ def test_real_ai_core_versions_split_tech_growth_from_ai_core():
     for version_id in ["TECH_GROWTH_CORE_V1", "AI_CHINA_V1", "AI_US_V1", "AI_GLOBAL_V1"]:
         total_weight = sum(float(item.get("weight") or 0) for item in versions[version_id]["constituents"])
         assert total_weight == 1.0
+
+
+def test_weighted_core_uses_fixed_return_weights_and_price_level_does_not_matter():
+    dates = ["20260101", "20260102", "20260105"]
+    market = pd.DataFrame({
+        "symbol": ["A"] * 3 + ["B"] * 3,
+        "trade_date": dates + dates,
+        "close": [10, 11, 12.1, 1000, 990, 980.1],
+    })
+    version = {
+        "version_id": "TEST_CORE",
+        "constituents": [
+            {"symbol": "A", "weight": 0.5, "source_table": "market_daily"},
+            {"symbol": "B", "weight": 0.5, "source_table": "market_daily"},
+        ],
+    }
+
+    index, _, missing = _weighted_core(market, pd.DataFrame(), version, {}, pd.Index(dates))
+
+    assert missing == []
+    assert index.loc["20260101"] == 100.0
+    assert index.loc["20260102"] == 104.5
+    assert index.loc["20260105"] == pytest.approx(109.2025)
+
+
+def test_weighted_core_does_not_reweight_when_core_constituent_missing():
+    dates = ["20260101", "20260102", "20260105"]
+    market = pd.DataFrame({
+        "symbol": ["A"] * 3 + ["B"] * 2,
+        "trade_date": dates + ["20260101", "20260105"],
+        "close": [10, 11, 12.1, 100, 121],
+    })
+    version = {
+        "version_id": "TEST_CORE",
+        "constituents": [
+            {"symbol": "A", "weight": 0.5, "source_table": "market_daily"},
+            {"symbol": "B", "weight": 0.5, "source_table": "market_daily"},
+        ],
+    }
+
+    index, _, _ = _weighted_core(market, pd.DataFrame(), version, {}, pd.Index(dates))
+
+    assert pd.isna(index.loc["20260102"])
+    assert pd.isna(index.loc["20260105"])
+
+
+def test_right_side_score_reports_insufficient_data_when_current_feature_coverage_low():
+    dates = pd.bdate_range("2026-01-01", periods=80).strftime("%Y%m%d")
+    frame = pd.DataFrame(index=dates)
+    frame["bio_close"] = [100 * (1.001 ** idx) for idx in range(80)]
+    frame["health_close"] = [100 * (1.0005 ** idx) for idx in range(80)]
+    frame["bio_vs_health"] = 0.001
+    frame["bio_rel_5d"] = 0.005
+    frame["bio_rel_10d"] = 0.01
+    frame["bio_outperform_streak"] = 1
+    frame["s1_total"] = 0.6
+    frame["s1_total_change"] = 0.01
+    frame["S1-03"] = 0.01
+    frame["S1-04"] = 1.0
+    frame["S1-05"] = 0.4
+    frame["s2_conversion_score"] = 0.55
+    frame["bio_amount_ratio_5_20"] = 1.1
+    frame["bio_vs_tech"] = 0.002
+    frame["bio_vs_ai"] = 0.002
+    frame["a_bio_ret"] = 0.001
+    frame["bio_ret"] = 0.001
+    frame.iloc[-1, frame.columns.get_loc("bio_vs_health")] = pd.NA
+    frame.iloc[-1, frame.columns.get_loc("bio_rel_5d")] = pd.NA
+    frame.iloc[-1, frame.columns.get_loc("bio_rel_10d")] = pd.NA
+    frame.iloc[-1, frame.columns.get_loc("bio_amount_ratio_5_20")] = pd.NA
+    frame.iloc[-1, frame.columns.get_loc("bio_vs_tech")] = pd.NA
+    frame.iloc[-1, frame.columns.get_loc("bio_vs_ai")] = pd.NA
+
+    result = _right_side_score(frame, {"right_side": {"target_forward_days": 5, "train_ratio": 0.7, "min_current_feature_coverage": 0.75}})
+
+    assert result["score_status"] == "insufficient_data"
+    assert result["right_side_score"] == ""
+    assert float(result["feature_coverage"]) < 0.75
+
+
+def test_a_share_same_day_strength_is_not_named_as_lead():
+    dates = pd.bdate_range("2026-01-01", periods=20).strftime("%Y%m%d")
+    frame = pd.DataFrame(index=dates)
+    frame["a_bio_ret"] = 0.02
+    frame["bio_ret"] = 0.0
+    frame["a_bio_vs_health"] = 0.02
+    frame["bio_close"] = [100 + idx for idx in range(20)]
+    frame["health_close"] = [100 for _ in range(20)]
+    frame["a_bio_close"] = [100 + idx for idx in range(20)]
+    frame["ai_core_close"] = [100 + idx for idx in range(20)]
+    frame["tech_core_close"] = [100 + idx for idx in range(20)]
+    frame["bio_vs_health"] = 0.0
+    frame["bio_vs_ai"] = 0.0
+    frame["bio_vs_tech"] = 0.0
+    frame["bio_amount_ratio_5_20"] = 1.0
+    frame["s1_total"] = 0.5
+
+    rows = _a_share_lead_stats(frame, {"forward_windows": [0, 1], "ai_state_thresholds": {"relative_lead_threshold": 0.01}})
+    same_day = {row["condition"] for row in rows if row["condition_type"] == "a_share_same_day_relative_strength"}
+    lead = {row["condition"] for row in rows if row["condition_type"] == "a_share_lead_signal"}
+
+    assert "589720_same_day_outperformance" in same_day
+    assert all("leads" not in condition for condition in same_day)
+    assert "589720_positive_signal" in lead
