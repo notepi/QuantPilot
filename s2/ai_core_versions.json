@@ -1,0 +1,37 @@
+{
+  "active_version_id": "CN_AI_CORE_V1",
+  "versions": [
+    {
+      "version_id": "CN_AI_CORE_V1",
+      "effective_date": "2026-06-18",
+      "market_scope": "China A-share technology proxy",
+      "constituents": [
+        {"symbol": "588000.SH", "name": "科创50ETF", "weight": 1.0}
+      ],
+      "data_source": "data/processed/market_daily.csv",
+      "rebalance_rule": "fixed until explicit config change",
+      "adjustment_policy": "unadjusted_close",
+      "notes": "Current system has no stable pure AI basket. 588000.SH is used as first-version China technology/growth proxy; it is not a US AI benchmark and not a mixed global AI index."
+    },
+    {
+      "version_id": "US_AI_CORE_V1_RESERVED",
+      "effective_date": "not_active",
+      "market_scope": "US AI proxy",
+      "constituents": [],
+      "data_source": "missing",
+      "rebalance_rule": "not_active",
+      "adjustment_policy": "missing",
+      "notes": "Reserved for future US AI basket. Not used in current reports."
+    },
+    {
+      "version_id": "GLOBAL_AI_CORE_V1_RESERVED",
+      "effective_date": "not_active",
+      "market_scope": "mixed China/US AI proxy",
+      "constituents": [],
+      "data_source": "missing",
+      "rebalance_rule": "not_active",
+      "adjustment_policy": "missing",
+      "notes": "Reserved for future blended benchmark. Not used in current reports."
+    }
+  ]
+}

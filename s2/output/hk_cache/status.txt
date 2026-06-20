@@ -1,4 +1,4 @@
-attempted_at=2026-06-10T20:00:36
+attempted_at=2026-06-18T22:13:12
 status=valid
 data_source=citydata_fund_daily
 primary_source=citydata_fund_daily

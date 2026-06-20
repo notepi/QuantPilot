@@ -13,13 +13,17 @@ from pathlib import Path
 
 from s2.event_store import ensure_event_store, load_events
 from s2.hk_observation import read_hk_observation, read_hk_update_status, upsert_hk_observation_history
+from s2.ai_biotech_validation import ValidationResult, run_ai_biotech_validation
 from s2.s1_reader import S1Record, load_latest_s1
 from s2.scoring import S2Score, score_s2
+from s2.style_rotation import StyleAnalysis, calculate_style_analysis, upsert_style_outputs
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_INDICATORS_DIR = PROJECT_ROOT / "data" / "indicators"
 DEFAULT_MARKET_DATA_DIR = PROJECT_ROOT / "data" / "raw"
+DEFAULT_PROCESSED_MARKET_DAILY = PROJECT_ROOT / "data" / "processed" / "market_daily.csv"
+DEFAULT_STYLE_CONFIG_PATH = PROJECT_ROOT / "s2" / "style_config.json"
 DEFAULT_EXCEL_PATH = PROJECT_ROOT / "docs" / "创新药_第一阶段_v2_claude.xlsx"
 DEFAULT_DATA_DIR = PROJECT_ROOT / "s2" / "data"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "s2" / "output"
@@ -166,6 +170,122 @@ def _cell(value: object) -> str:
 
 def _csv_float(value: float | None) -> str:
     return "" if value is None else f"{value:.8f}"
+
+
+def _style_score_text(value: float | None) -> str:
+    return "missing" if value is None else f"{value:.2f}"
+
+
+def _style_percent(value: float | None) -> str:
+    return "missing" if value is None else f"{value:.2%}"
+
+
+def _style_total_text(style: StyleAnalysis | None, industry_score: float) -> str:
+    if style is None:
+        return "missing"
+    total = style.total_score(industry_score)
+    return _style_score_text(total)
+
+
+def _style_conclusion(style: StyleAnalysis | None) -> str:
+    if style is None:
+        return "AI—创新药风格模块未运行。"
+    if style.data_status == "missing":
+        return f"AI—创新药风格不可判定：{style.missing_reason or '核心行情缺失'}。"
+    if style.style_regime == "INDEPENDENT_BIOTECH":
+        return "当前创新药开始脱离AI跷跷板：AI不弱时创新药仍保持正收益，并在5D、10D同时跑赢AI与医疗宽基。"
+    if style.style_regime == "ACTIVE_ROTATION":
+        return "当前创新药属于主动轮动：创新药跑赢医疗宽基，但尚未证明AI偏强时也能持续形成超额。"
+    if style.style_regime == "AI_BIOTECH_SEESAW":
+        return "当前属于AI—创新药跷跷板：创新药主要在AI走弱时获得资金轮动，尚未形成独立主线。"
+    if style.style_regime == "AI_CROWDING_OUT":
+        return "当前存在AI抽血：AI持续偏强时，创新药跑输AI和医疗宽基。"
+    if style.style_regime == "GROWTH_RISK_OFF":
+        return "当前属于成长风险偏好恶化：AI和创新药同步走弱。"
+    return "当前AI—创新药风格为中性：尚未形成稳定的独立主线或跷跷板证据。"
+
+
+def _style_rotation_section(style: StyleAnalysis | None, industry_score: float) -> list[str]:
+    if style is None:
+        return [
+            "## 十、AI—创新药风格",
+            "",
+            "- S2_STYLE = missing；风格模块未运行。",
+        ]
+    c20 = style.conditional.get(20)
+    c60 = style.conditional.get(60)
+    lines = [
+        "## 十、AI—创新药风格",
+        "",
+        "该模块独立于 S2 产业评分，只判断资金风格和独立性，不改 S2-01 至 S2-06 权重。",
+        "",
+        f"- AI_CORE = {style.ai_core_symbol}；创新药主对象 = {style.bio_symbol}；医疗宽基对照 = {style.health_symbol}。",
+        f"- S2_INDUSTRY = {industry_score:.2f}；S2_STYLE = {_style_score_text(style.style_score)}；S2_TOTAL = {_style_total_text(style, industry_score)}。",
+        f"- style_level = {style.style_level}；style_regime = {style.style_regime}；data_status = {style.data_status}。",
+        f"- negative_rotation_flag = {str(style.negative_rotation_flag).lower()}；missing_reason = {style.missing_reason or 'none'}。",
+        f"- 结论：{_style_conclusion(style)}",
+        "",
+        "| 周期 | 159567收益 | AI_CORE收益 | 159567 vs AI | 159567 vs 159557 | independence | 状态 |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- |",
+    ]
+    for item in style.periods:
+        lines.append(
+            f"| {item.period}D | {_style_percent(item.bio_ret)} | {_style_percent(item.ai_ret)} | "
+            f"{_style_percent(item.bio_vs_ai)} | {_style_percent(item.bio_vs_health)} | "
+            f"{_style_score_text(item.independence)} | {item.state} |"
+        )
+    lines.extend([
+        "",
+        "| 辅助指标 | 数值 |",
+        "| --- | ---: |",
+        f"| corr_10d | {_style_score_text(style.correlations.get(10))} |",
+        f"| corr_20d | {_style_score_text(style.correlations.get(20))} |",
+        f"| corr_60d | {_style_score_text(style.correlations.get(60))} |",
+    ])
+    if c20:
+        lines.extend([
+            f"| bio_avg_ret_when_ai_up_20d | {_style_percent(c20.bio_avg_ret_when_ai_up)} |",
+            f"| bio_avg_ret_when_ai_down_20d | {_style_percent(c20.bio_avg_ret_when_ai_down)} |",
+            f"| bio_excess_when_ai_up_20d | {_style_percent(c20.bio_excess_when_ai_up)} |",
+            f"| bio_excess_when_ai_down_20d | {_style_percent(c20.bio_excess_when_ai_down)} |",
+        ])
+    if c60:
+        lines.extend([
+            f"| bio_avg_ret_when_ai_up_60d | {_style_percent(c60.bio_avg_ret_when_ai_up)} |",
+            f"| bio_avg_ret_when_ai_down_60d | {_style_percent(c60.bio_avg_ret_when_ai_down)} |",
+            f"| bio_excess_when_ai_up_60d | {_style_percent(c60.bio_excess_when_ai_up)} |",
+            f"| bio_excess_when_ai_down_60d | {_style_percent(c60.bio_excess_when_ai_down)} |",
+        ])
+    lines.extend([
+        "",
+        f"- 60日累计收益图：{style.chart_cumulative_path or 'missing'}",
+        f"- 60日超额曲线图：{style.chart_excess_path or 'missing'}",
+    ])
+    return lines
+
+
+def _ai_biotech_validation_section(result: ValidationResult | None) -> list[str]:
+    lines = [
+        "## 十一、AI—创新药严格验证",
+        "",
+        "该模块使用最近最多250个共同有效交易日，验证AI虹吸、AI回调轮动、A股领先港股和右侧确认，不进入原S1/S2正式评分。",
+        "",
+    ]
+    if result is None:
+        lines.append("- validation_status = missing；验证模块未运行。")
+        return lines
+    lines.extend([
+        f"- 报告日期：{result.report_date}；A股数据日期：{result.a_share_date}；港股数据日期：{result.hk_date}；对应美股收盘日期：{result.us_close_date}。",
+        f"- AI_CORE版本：{result.ai_core_version}；AI_CORE数据日期：{result.ai_core_date}；有效样本数：{result.sample_count}。",
+        f"- AI状态：{result.current_ai_state}；市场状态：{result.market_state}。",
+        f"- 右侧确认评分：{_style_score_text(result.right_side_score)}；等级：{result.right_side_level}；置信度：{result.score_confidence}。",
+        f"- 当前命题状态：{result.thesis_state}；仓位动作标签：{result.position_action}。",
+        f"- 最强支持证据：{'；'.join(result.strongest_support[:3]) or 'missing'}。",
+        f"- 最强反对证据：{'；'.join(result.strongest_opposition[:3]) or 'missing'}。",
+        f"- 验证日报：{result.report_path}",
+        f"- 审计报告：{result.audit_path}",
+    ])
+    return lines
 
 
 def _s1_line(record: S1Record) -> str:
@@ -1544,7 +1664,18 @@ def _observation_conditions(s1: S1Record, recent_s1: list[S1Record], s2: S2Score
     return lines
 
 
-def render_report(s1: S1Record, recent_s1: list[S1Record], s2: S2Score, data_dir: Path, output_dir: Path, report_date: str, hk_observation: dict[str, object], hk_update_status: dict[str, object]) -> str:
+def render_report(
+    s1: S1Record,
+    recent_s1: list[S1Record],
+    s2: S2Score,
+    data_dir: Path,
+    output_dir: Path,
+    report_date: str,
+    hk_observation: dict[str, object],
+    hk_update_status: dict[str, object],
+    style_analysis: StyleAnalysis | None = None,
+    ai_validation: ValidationResult | None = None,
+) -> str:
     _ensure_auxiliary_layers(data_dir)
     observation = _combination_observation(s1, s2)
     bd_events = load_events(data_dir / "bd_events.csv")
@@ -1628,6 +1759,8 @@ def render_report(s1: S1Record, recent_s1: list[S1Record], s2: S2Score, data_dir
         f"- S1_score_contribution：flow_score_contribution={s1_contrib['flow_score_contribution']:.3f}；price_strength_contribution={s1_contrib['price_strength_contribution']:.3f}；volume_contribution={s1_contrib['volume_contribution']:.3f}；breadth_contribution={s1_contrib['breadth_contribution']:.3f}；leader_contribution={s1_contrib['leader_contribution']:.3f}。",
         f"- {_s1_contribution_sentence(s1)}",
         f"- S2正式量化等级：adjusted_score={s2.adjusted_score:.2f}，等级为{s2.level}。",
+        f"- S2_INDUSTRY={s2.adjusted_score:.2f}；S2_STYLE={_style_score_text(style_analysis.style_score if style_analysis else None)}；S2_TOTAL={_style_total_text(style_analysis, s2.adjusted_score)}；style_regime={(style_analysis.style_regime if style_analysis else 'missing')}。",
+        f"- AI—创新药严格验证：右侧确认评分={_style_score_text(ai_validation.right_side_score if ai_validation else None)}；命题状态={(ai_validation.thesis_state if ai_validation else 'missing')}；仓位动作标签={(ai_validation.position_action if ai_validation else 'missing')}。",
         f"- S2产业事件侧得分：S2_event_score={_s2_event_score(s2):.2f}，状态为{_event_score_state(_s2_event_score(s2))}。",
         f"- S2交易转化侧得分：S2_conversion_score={_s2_conversion_score(s2):.2f}，状态为{_conversion_score_state(s2)}。",
         f"- BD联动解释：{_bd_linkage_explanation(s2)}",
@@ -1762,10 +1895,12 @@ def render_report(s1: S1Record, recent_s1: list[S1Record], s2: S2Score, data_dir
     lines.extend(["", *_hk_observation_section(hk_observation, output_dir, report_date)])
     lines.extend(["", *_policy_risk_section(policy_events)])
     lines.extend(["", *_macro_risk_section(macro_rows, report_date)])
+    lines.extend(["", *_style_rotation_section(style_analysis, s2.adjusted_score)])
+    lines.extend(["", *_ai_biotech_validation_section(ai_validation)])
     lines.extend(["", *_position_explanation_section(s1, s2, hk_observation, output_dir, report_date, policy_events)])
     lines.extend([
         "",
-        "## 十、第四层：final_view_客观状态汇总",
+        "## 十二、第四层：final_view_客观状态汇总",
         "",
         f"- {final_view}",
         f"- final_view_code = {final_view_fields['final_view_code']}",
@@ -1785,7 +1920,7 @@ def render_report(s1: S1Record, recent_s1: list[S1Record], s2: S2Score, data_dir
         "- final_view 只做客观状态汇总，不参与评分，不包含交易建议。",
         "- 本报告不输出买卖建议；159567是否右侧必须以159567 vs 159557同步行情为准。",
         "",
-        "## 十一、数据缺失与待验证事项",
+        "## 十三、数据缺失与待验证事项",
         "",
     ])
     if s2.missing_data:
@@ -1801,19 +1936,19 @@ def render_report(s1: S1Record, recent_s1: list[S1Record], s2: S2Score, data_dir
 
     lines.extend([
         "",
-        "## 十二、缺口治理",
+        "## 十四、缺口治理",
         "",
     ])
     lines.extend(f"- {action}" for action in _data_quality_actions(s2))
     lines.extend([
         "",
-        "## 十三、客观观察条件",
+        "## 十五、客观观察条件",
         "",
     ])
     lines.extend(_observation_conditions(s1, recent_s1, s2, hk_observation, output_dir, report_date, data_dir, macro_rows))
     lines.extend([
         "",
-        "## 十四、复核清单",
+        "## 十六、复核清单",
         "",
         "- S2分数来自本地事件库和行情计算，不靠临场主观重打分。",
         "- 新事件必须由智能体联网查证后写入事件库。",
@@ -1832,12 +1967,14 @@ def _upsert_score(
     s2: S2Score,
     observation: str,
     hk_observation: dict[str, object],
+    style_analysis: StyleAnalysis | None = None,
     policy_events: list[dict[str, str]] | None = None,
     macro_rows: list[dict[str, str]] | None = None,
 ) -> None:
     path = output_dir / "s2_scores.csv"
     fields = [
         "date", "s1_trade_date", "s1_total", "s2_raw_score", "s2_adjusted_score", "s2_total",
+        "s2_industry", "s2_style", "s2_total_with_style", "style_level", "style_regime", "style_data_status",
         "s2_level", "combination_observation", "available_weight", "missing_indicator_count",
         "pending_indicator_count", "proxy_indicator_count", "stale_indicator_count", "missing_data",
         "s2_raw_total", "s2_adjusted_total", "formal_rating", "explanation_status",
@@ -1867,6 +2004,12 @@ def _upsert_score(
         "s2_raw_score": f"{s2.raw_score:.4f}",
         "s2_adjusted_score": f"{s2.adjusted_score:.4f}",
         "s2_total": f"{s2.adjusted_score:.4f}",
+        "s2_industry": f"{s2.adjusted_score:.4f}",
+        "s2_style": _csv_float(style_analysis.style_score if style_analysis else None),
+        "s2_total_with_style": _csv_float(style_analysis.total_score(s2.adjusted_score) if style_analysis else None),
+        "style_level": style_analysis.style_level if style_analysis else "missing",
+        "style_regime": style_analysis.style_regime if style_analysis else "missing",
+        "style_data_status": style_analysis.data_status if style_analysis else "missing",
         "s2_level": s2.level,
         "combination_observation": observation,
         "available_weight": f"{s2.available_weight:.4f}",
@@ -2071,7 +2214,16 @@ def _render_indicator_history(output_dir: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _render_daily_brief(s1: S1Record, s2: S2Score, output_dir: Path, report_date: str, hk_observation: dict[str, object], hk_update_status: dict[str, object]) -> str:
+def _render_daily_brief(
+    s1: S1Record,
+    s2: S2Score,
+    output_dir: Path,
+    report_date: str,
+    hk_observation: dict[str, object],
+    hk_update_status: dict[str, object],
+    style_analysis: StyleAnalysis | None = None,
+    ai_validation: ValidationResult | None = None,
+) -> str:
     observation = _combination_observation(s1, s2)
     lines = [
         "# 创新药 S2 当日简报",
@@ -2084,6 +2236,8 @@ def _render_daily_brief(s1: S1Record, s2: S2Score, output_dir: Path, report_date
         "",
         f"- A股温度计状态：{_s1_market_state(s1)}。",
         f"- 正式量化等级：{s2.level}",
+        f"- S2_INDUSTRY={s2.adjusted_score:.2f}；S2_STYLE={_style_score_text(style_analysis.style_score if style_analysis else None)}；S2_TOTAL={_style_total_text(style_analysis, s2.adjusted_score)}；style_regime={(style_analysis.style_regime if style_analysis else 'missing')}。",
+        f"- AI—创新药严格验证：右侧确认评分={_style_score_text(ai_validation.right_side_score if ai_validation else None)}；命题状态={(ai_validation.thesis_state if ai_validation else 'missing')}；仓位动作标签={(ai_validation.position_action if ai_validation else 'missing')}。",
         f"- S2产业事件侧得分：S2_event_score={_s2_event_score(s2):.2f}，状态为{_event_score_state(_s2_event_score(s2))}。",
         f"- S2交易转化侧得分：S2_conversion_score={_s2_conversion_score(s2):.2f}，状态为{_conversion_score_state(s2)}。",
         f"- BD联动解释：{_bd_linkage_explanation(s2)}",
@@ -2112,10 +2266,11 @@ def generate_report(
     excel_path: Path = DEFAULT_EXCEL_PATH,
     report_date: str | None = None,
 ) -> Path:
-    report_date = report_date or datetime.now().strftime("%Y-%m-%d")
     ensure_event_store(data_dir)
     _ensure_auxiliary_layers(data_dir)
     latest_s1, recent_s1 = load_latest_s1(indicators_dir)
+    if report_date is None:
+        report_date = f"{latest_s1.trade_date[:4]}-{latest_s1.trade_date[4:6]}-{latest_s1.trade_date[6:]}"
     s2 = score_s2(
         trade_date=latest_s1.trade_date,
         data_dir=data_dir,
@@ -2143,7 +2298,22 @@ def generate_report(
         if hk_update_status.get(key):
             hk_observation[key] = hk_update_status[key]
     _apply_hk_external_availability(data_dir, report_date, hk_observation)
-    content = render_report(latest_s1, recent_s1, s2, data_dir, output_dir, report_date, hk_observation, hk_update_status)
+    style_analysis = calculate_style_analysis(
+        market_daily_path=DEFAULT_PROCESSED_MARKET_DAILY,
+        config_path=DEFAULT_STYLE_CONFIG_PATH,
+        output_dir=output_dir,
+        report_date=report_date,
+    )
+    upsert_style_outputs(output_dir, report_date, style_analysis, s2.adjusted_score)
+    ai_validation = run_ai_biotech_validation(
+        market_daily_path=DEFAULT_PROCESSED_MARKET_DAILY,
+        indicators_dir=indicators_dir,
+        s2_scores_path=output_dir / "s2_scores.csv",
+        config_path=DEFAULT_STYLE_CONFIG_PATH,
+        output_dir=output_dir,
+        report_date=report_date,
+    )
+    content = render_report(latest_s1, recent_s1, s2, data_dir, output_dir, report_date, hk_observation, hk_update_status, style_analysis, ai_validation)
     policy_events = load_events(data_dir / "policy_risk_events.csv")
     macro_rows = load_events(data_dir / "macro_market_snapshot.csv")
     reports_dir = output_dir / "reports"
@@ -2151,12 +2321,12 @@ def generate_report(
     report_path = reports_dir / f"{report_date}.md"
     report_path.write_text(content, encoding="utf-8")
     (output_dir / "s2_daily_report.md").write_text(content, encoding="utf-8")
-    brief = _render_daily_brief(latest_s1, s2, output_dir, report_date, hk_observation, hk_update_status)
+    brief = _render_daily_brief(latest_s1, s2, output_dir, report_date, hk_observation, hk_update_status, style_analysis, ai_validation)
     briefs_dir = output_dir / "briefs"
     briefs_dir.mkdir(parents=True, exist_ok=True)
     (briefs_dir / f"{report_date}.md").write_text(brief, encoding="utf-8")
     (output_dir / "s2_daily_brief.md").write_text(brief, encoding="utf-8")
-    _upsert_score(output_dir, report_date, latest_s1, recent_s1, s2, _combination_observation(latest_s1, s2), hk_observation, policy_events, macro_rows)
+    _upsert_score(output_dir, report_date, latest_s1, recent_s1, s2, _combination_observation(latest_s1, s2), hk_observation, style_analysis, policy_events, macro_rows)
     _upsert_item_scores(output_dir, report_date, latest_s1, s2, hk_observation)
     upsert_hk_observation_history(output_dir, report_date, hk_observation)
     (output_dir / "s2_indicator_history.md").write_text(_render_indicator_history(output_dir), encoding="utf-8")

@@ -24,6 +24,7 @@ from wb.tushare_proxy import pro_api as citydata_pro_api
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
+INDICATORS_DIR = DATA_DIR / "indicators"
 PROCESSED_DIR = DATA_DIR / "processed"
 S2_DATA_DIR = PROJECT_ROOT / "s2" / "data"
 S2_OUTPUT_DIR = PROJECT_ROOT / "s2" / "output"
@@ -34,7 +35,10 @@ A_STOCKS = [
     "688331.SH", "688578.SH", "688180.SH", "688266.SH",
     "300558.SZ", "002422.SZ", "000963.SZ",
 ]
-ETF_SYMBOLS = ["159567.SZ", "159557.SZ", "589720.SH", "512010.SH", "512170.SH"]
+ETF_SYMBOLS = [
+    "159567.SZ", "159557.SZ", "589720.SH", "512010.SH", "512170.SH",
+    "588000.SH", "512760.SH",
+]
 HK_STOCKS = [
     "09926.HK", "01801.HK", "06160.HK", "06990.HK", "09966.HK",
     "06855.HK", "02096.HK", "03692.HK", "01093.HK", "01177.HK", "02269.HK",
@@ -63,6 +67,18 @@ MARKET_FIELDS = [
 
 def _today() -> str:
     return datetime.now().strftime("%Y%m%d")
+
+
+def _report_trade_date() -> str:
+    indicator_files = sorted(INDICATORS_DIR.glob("*.json"))
+    if not indicator_files:
+        return _today()
+    latest = indicator_files[-1]
+    try:
+        payload = json.loads(latest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return latest.stem
+    return str(payload.get("trade_date") or latest.stem)
 
 
 def _start_date(months: int = 24) -> str:
@@ -392,7 +408,7 @@ def build_clinical_trade_returns() -> Path:
     result = clinical_conversion_rate(
         clinical_events,
         DATA_DIR / "raw",
-        as_of_trade_date=_today(),
+        as_of_trade_date=_report_trade_date(),
         audit_path=audit_path if audit_path.exists() else None,
     )
     rows = []
@@ -497,11 +513,12 @@ def build_data_quality_report(paths: list[Path]) -> Path:
 
 
 def build_data_layer() -> list[Path]:
+    report_trade_date = _report_trade_date()
     paths = [
         build_market_daily(),
         build_macro_market_daily(),
     ]
-    paths.append(refresh_market_data_audit())
+    paths.append(refresh_market_data_audit(report_trade_date))
     paths.extend([
         build_clinical_trade_returns(),
         build_company_financials(),

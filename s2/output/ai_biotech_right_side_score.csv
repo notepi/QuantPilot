@@ -1,0 +1,2 @@
+date,right_side_score,right_side_level,confidence,train_samples,oos_samples,oos_direction_accuracy,feature_contributions,duplicate_counting_check
+20260618,54.70,初步右侧,medium,144,62,0.45161290,s1_group=50.96; bio_relative_strength=3.15; ai_not_crowding=0.59; bio_outperform_streak=0.00; s2_conversion=0.00; volume=0.00; a_share_lead=0.00,1d/5d/10d relative strength collapsed into one bio_relative_strength feature; S1 total and components are grouped to reduce double counting.

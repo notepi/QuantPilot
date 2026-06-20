@@ -1,6 +1,6 @@
 {
-  "attempted_at": "2026-06-10T20:03:00",
+  "attempted_at": "2026-06-18T22:12:00",
   "success": true,
   "partial_failure": false,
-  "message": "S1指标已更新到 20260610；本地 589720.SH 行情最新交易日为 20260610。"
+  "message": "S1指标已更新到 20260618；本地 589720.SH 行情最新交易日为 20260618；fund_share 已通过上交所fallback补至 20260617。"
 }

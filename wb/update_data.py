@@ -175,16 +175,72 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
         DataFrame (已过滤)
     """
     pro = citydata_pro_api()
-    df = pro.fund_share(ts_code=ts_code)
-    if df is None or len(df) == 0:
-        return pd.DataFrame()
-    if "trade_date" not in df.columns:
-        print(f"  {ts_code}: fund_share返回缺少trade_date，按无新数据处理；columns={list(df.columns)}")
+    frames = []
+
+    df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
+    if df is not None and len(df) > 0 and "trade_date" in df.columns:
+        df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
+        frames.append(df)
+    elif df is not None and len(df) > 0:
+        print(f"  {ts_code}: fund_share返回缺少trade_date，尝试交易所fallback；columns={list(df.columns)}")
+
+    if ts_code.endswith(".SH"):
+        combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        latest = str(combined["trade_date"].max()) if not combined.empty and "trade_date" in combined.columns else ""
+        if latest < end_date:
+            fallback_start = max(start_date, latest) if latest else start_date
+            fallback = fetch_fund_share_sse(ts_code, fallback_start, end_date)
+            if len(fallback) > 0:
+                frames.append(fallback)
+
+    if not frames:
         return pd.DataFrame()
 
-    # 过滤日期范围
-    df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
-    return df
+    combined = pd.concat(frames, ignore_index=True)
+    combined["trade_date"] = combined["trade_date"].astype(str)
+    combined = combined[(combined["trade_date"] >= start_date) & (combined["trade_date"] <= end_date)]
+    return combined
+
+
+def fetch_fund_share_sse(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """从上交所 ETF 规模接口补充沪市 ETF 份额，fd_share 统一为万份。"""
+    try:
+        import akshare as ak
+    except Exception as e:
+        print(f"  {ts_code}: akshare不可用，跳过SSE fund_share fallback: {e}")
+        return pd.DataFrame()
+
+    code = ts_code.split(".")[0]
+    rows = []
+    for date in pd.date_range(start=start_date, end=end_date, freq="D"):
+        date_str = date.strftime("%Y%m%d")
+        try:
+            scale = ak.fund_etf_scale_sse(date=date_str)
+        except Exception:
+            continue
+        required = {"基金代码", "统计日期", "基金份额"}
+        if scale is None or len(scale) == 0 or not required.issubset(scale.columns):
+            continue
+        scale["基金代码"] = scale["基金代码"].astype(str).str.zfill(6)
+        hit = scale[scale["基金代码"] == code]
+        if hit.empty:
+            continue
+        share = pd.to_numeric(hit.iloc[0]["基金份额"], errors="coerce")
+        if pd.isna(share):
+            continue
+        rows.append(
+            {
+                "ts_code": ts_code,
+                "trade_date": str(hit.iloc[0]["统计日期"]).replace("-", ""),
+                "fd_share": float(share) / 10000.0,
+                "fund_type": "ETF",
+                "market": "SH",
+            }
+        )
+
+    if rows:
+        print(f"  {ts_code}: SSE fallback补充 {len(rows)} 条fund_share")
+    return pd.DataFrame(rows)
 
 
 def fetch_daily(ts_codes: list, start_date: str, end_date: str) -> pd.DataFrame:
@@ -307,7 +363,9 @@ def update_fund_share_incremental():
         if next_day > today:
             print(f"  已是最新")
             return
-        fetch_start = next_day
+        # fund_share 在 citydata 上窄窗口查询可能漏返回最新份额，
+        # 用重叠回看窗口抓取，再按 ts_code/trade_date 去重覆盖。
+        fetch_start = (datetime.strptime(latest, "%Y%m%d") - timedelta(days=30)).strftime("%Y%m%d")
     else:
         fetch_start = ETF_START_DATE
 

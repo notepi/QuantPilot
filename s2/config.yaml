@@ -4,6 +4,7 @@ paths:
   s2_excel: docs/创新药_第一阶段_v2_claude.xlsx
   event_data: s2/data
   output: s2/output
+  style_config: s2/style_config.json
 
 windows:
   bd_days: 90
@@ -14,4 +15,3 @@ scoring:
   missing_score: 0.5
   meet_score: 0.7
   exceed_score: 1.0
-
