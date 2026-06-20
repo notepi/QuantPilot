@@ -1,6 +1,6 @@
 # S2 数据质量报告
 
-**生成时间**: 2026-06-19T21:34:44
+**生成时间**: 2026-06-20T09:11:58
 
 ## 数据分工
 
@@ -20,8 +20,8 @@
 
 | 文件 | 行数 | missing_ratio | source_status分布 | fetched_at覆盖率 |
 | --- | ---: | ---: | --- | ---: |
-| data/processed/market_daily.csv | 14912 | 6.72% | success:14912 | 100.00% |
-| data/processed/macro_market_daily.csv | 145 | 17.76% | failed:1；success:144 | 100.00% |
+| data/processed/market_daily.csv | 14898 | 6.73% | success:14898 | 100.00% |
+| data/processed/macro_market_daily.csv | 5010 | 8.61% | failed:1；success:5009 | 100.00% |
 | s2/output/data_audit/market_data_audit.csv | 31 | 26.93% | missing:31 | 100.00% |
 | s2/data/clinical_trade_returns.csv | 10 | 1.05% | missing:10 | 0.00% |
 | data/processed/company_financials.csv | 6 | 51.85% | present_not_reverified:6 | 0.00% |

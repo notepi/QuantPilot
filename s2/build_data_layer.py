@@ -265,7 +265,7 @@ def build_market_daily() -> Path:
 
 
 def _fetch_yahoo_daily(symbol: str, label: str) -> pd.DataFrame:
-    params = urllib.parse.urlencode({"range": "15d", "interval": "1d"})
+    params = urllib.parse.urlencode({"range": "2y", "interval": "1d"})
     url = f"https://query2.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?{params}"
     fetched_at = _now()
     try:

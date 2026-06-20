@@ -1,7 +1,8 @@
-"""AI versus biotech style-rotation analysis for S2.
+"""Technology-growth versus biotech style-rotation analysis for S2.
 
 The module is intentionally separate from the formal S2 industry score. It only
-uses market prices to answer whether biotech strength is independent from AI.
+uses market prices to answer whether biotech strength is independent from
+technology/growth style.
 """
 
 from __future__ import annotations
@@ -24,11 +25,12 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "s2" / "output"
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "module": "AI_BIOTECH_ROTATION",
+    "module": "TECH_GROWTH_BIOTECH_ROTATION",
     "symbols": {
         "bio": "159567.SZ",
         "health": "159557.SZ",
-        "ai_core": "588000.SH",
+        "tech_growth_core": "588000.SH",
+        "ai_core": "512760.SH",
         "ai_semi": "512760.SH",
     },
     "periods": [1, 3, 5, 10, 20],
@@ -331,7 +333,7 @@ def calculate_style_analysis(
     config = load_style_config(config_path)
     symbols = config["symbols"]
     bio_symbol = str(symbols["bio"])
-    ai_symbol = str(symbols["ai_core"])
+    ai_symbol = str(symbols.get("tech_growth_core") or symbols["ai_core"])
     health_symbol = str(symbols["health"])
     clean_report_date = (report_date or "").replace("-", "")
 
@@ -353,7 +355,7 @@ def calculate_style_analysis(
         LOGGER.warning("S2_STYLE missing required symbols: %s", ",".join(missing))
         return StyleAnalysis(
             report_date=effective_report_date,
-            module=str(config.get("module") or "AI_BIOTECH_ROTATION"),
+            module=str(config.get("module") or "TECH_GROWTH_BIOTECH_ROTATION"),
             bio_symbol=bio_symbol,
             ai_core_symbol=ai_symbol,
             health_symbol=health_symbol,
@@ -410,7 +412,7 @@ def calculate_style_analysis(
     )
     return StyleAnalysis(
         report_date=effective_report_date,
-        module=str(config.get("module") or "AI_BIOTECH_ROTATION"),
+        module=str(config.get("module") or "TECH_GROWTH_BIOTECH_ROTATION"),
         bio_symbol=bio_symbol,
         ai_core_symbol=ai_symbol,
         health_symbol=health_symbol,

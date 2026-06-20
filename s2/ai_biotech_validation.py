@@ -23,6 +23,7 @@ from s2.style_rotation import load_style_config
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MARKET_DAILY = PROJECT_ROOT / "data" / "processed" / "market_daily.csv"
+DEFAULT_MACRO_MARKET_DAILY = PROJECT_ROOT / "data" / "processed" / "macro_market_daily.csv"
 DEFAULT_INDICATORS_DIR = PROJECT_ROOT / "data" / "indicators"
 DEFAULT_S2_SCORES = PROJECT_ROOT / "s2" / "output" / "s2_scores.csv"
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "s2" / "style_config.json"
@@ -38,8 +39,11 @@ class ValidationResult:
     us_close_date: str
     ai_core_date: str
     ai_core_version: str
+    tech_growth_core_date: str
+    tech_growth_core_version: str
     sample_count: int
     current_ai_state: str
+    current_tech_growth_state: str
     market_state: str
     right_side_score: float | None
     right_side_level: str
@@ -60,13 +64,26 @@ def run_ai_biotech_validation(
     ai_core_versions_path: Path = DEFAULT_AI_CORE_VERSIONS,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     report_date: str | None = None,
+    macro_market_daily_path: Path = DEFAULT_MACRO_MARKET_DAILY,
 ) -> ValidationResult:
     config = load_style_config(config_path)
-    ai_version = _active_ai_core_version(ai_core_versions_path, config.get("ai_core_version_id"))
-    data = _build_research_frame(market_daily_path, indicators_dir, s2_scores_path, config, ai_version, report_date)
+    versions_payload = _load_versions_payload(ai_core_versions_path)
+    ai_version = _core_version(versions_payload, config.get("ai_core_version_id") or versions_payload.get("active_version_id"))
+    tech_version = _core_version(versions_payload, config.get("tech_growth_core_version_id") or versions_payload.get("tech_growth_core_version_id"))
+    data = _build_research_frame(
+        market_daily_path,
+        macro_market_daily_path,
+        indicators_dir,
+        s2_scores_path,
+        config,
+        versions_payload,
+        ai_version,
+        tech_version,
+        report_date,
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    audit = _audit_system(data, config, ai_version, market_daily_path, indicators_dir, s2_scores_path)
+    audit = _audit_system(data, config, ai_version, tech_version, market_daily_path, macro_market_daily_path, indicators_dir, s2_scores_path)
     window_stats = _window_stats(data.frame, config)
     state_stats = _ai_state_stats(data.frame, config)
     lead_stats = _a_share_lead_stats(data.frame, config)
@@ -84,7 +101,7 @@ def run_ai_biotech_validation(
     audit_path.write_text(_render_audit_report(audit), encoding="utf-8")
     report_path = output_dir / "ai_biotech_validation_report.md"
     report_path.write_text(
-        _render_validation_report(data, config, ai_version, window_stats, state_stats, lead_stats, right_side, falsification, position),
+        _render_validation_report(data, config, ai_version, tech_version, window_stats, state_stats, lead_stats, right_side, falsification, position),
         encoding="utf-8",
     )
 
@@ -95,9 +112,12 @@ def run_ai_biotech_validation(
         hk_date=str(latest.get("hk_date", "missing")) if len(data.frame) else "missing",
         us_close_date=str(latest.get("us_close_date", "not_applicable")) if len(data.frame) else "missing",
         ai_core_date=str(latest.get("ai_core_date", "missing")) if len(data.frame) else "missing",
+        tech_growth_core_date=str(latest.get("tech_core_date", "missing")) if len(data.frame) else "missing",
         ai_core_version=ai_version["version_id"],
+        tech_growth_core_version=tech_version["version_id"],
         sample_count=len(data.frame),
         current_ai_state=str(latest.get("ai_state", "missing")) if len(data.frame) else "missing",
+        current_tech_growth_state=str(latest.get("tech_state", "missing")) if len(data.frame) else "missing",
         market_state=str(latest.get("market_state", "missing")) if len(data.frame) else "missing",
         right_side_score=_float_or_none(right_side.get("right_side_score")),
         right_side_level=str(right_side.get("right_side_level") or "missing"),
@@ -119,8 +139,12 @@ class ResearchData:
     missing: list[str]
 
 
-def _active_ai_core_version(path: Path, configured: str | None) -> dict[str, Any]:
+def _load_versions_payload(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"versions": []}
+    return payload
+
+
+def _core_version(payload: dict[str, Any], configured: str | None) -> dict[str, Any]:
     active = configured or payload.get("active_version_id")
     for version in payload.get("versions", []):
         if version.get("version_id") == active:
@@ -132,8 +156,12 @@ def _active_ai_core_version(path: Path, configured: str | None) -> dict[str, Any
         "data_source": "missing",
         "rebalance_rule": "missing",
         "adjustment_policy": "missing",
-        "notes": "AI_CORE version not found.",
+        "notes": "core version not found.",
     }
+
+
+def _versions_by_id(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {str(version.get("version_id")): version for version in payload.get("versions", [])}
 
 
 def _load_market(path: Path) -> pd.DataFrame:
@@ -150,6 +178,20 @@ def _load_market(path: Path) -> pd.DataFrame:
     return df.dropna(subset=["symbol", "trade_date", "close"]).drop_duplicates(["symbol", "trade_date"], keep="last")
 
 
+def _load_macro(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_csv(path, dtype={"symbol": str, "trade_date": str})
+    needed = {"symbol", "trade_date", "close"}
+    if not needed.issubset(df.columns):
+        return pd.DataFrame()
+    df["close"] = pd.to_numeric(df["close"], errors="coerce")
+    df["trade_date"] = df["trade_date"].astype(str).str.replace("-", "", regex=False)
+    if "source_status" in df.columns:
+        df = df[df["source_status"].fillna("success") == "success"].copy()
+    return df.dropna(subset=["symbol", "trade_date", "close"]).drop_duplicates(["symbol", "trade_date"], keep="last")
+
+
 def _series(df: pd.DataFrame, symbol: str, field: str = "close") -> pd.Series:
     if df.empty or field not in df.columns:
         return pd.Series(dtype="float64")
@@ -157,20 +199,85 @@ def _series(df: pd.DataFrame, symbol: str, field: str = "close") -> pd.Series:
     return pd.Series(pd.to_numeric(rows[field], errors="coerce").to_numpy(), index=rows["trade_date"].astype(str), dtype="float64").dropna()
 
 
-def _weighted_ai_core(market: pd.DataFrame, version: dict[str, Any]) -> pd.Series:
+def _align_us_to_asia(us_series: pd.Series, base_index: pd.Index) -> tuple[pd.Series, pd.Series]:
+    if us_series.empty or len(base_index) == 0:
+        return pd.Series(dtype="float64"), pd.Series(dtype="object")
+    us = us_series.sort_index()
+    values = []
+    dates = []
+    for asian_date in base_index.astype(str):
+        usable = us[us.index.astype(str) < asian_date]
+        if usable.empty:
+            values.append(float("nan"))
+            dates.append("missing")
+        else:
+            values.append(float(usable.iloc[-1]))
+            dates.append(str(usable.index[-1]))
+    return pd.Series(values, index=base_index, dtype="float64"), pd.Series(dates, index=base_index, dtype="object")
+
+
+def _source_series(
+    market: pd.DataFrame,
+    macro: pd.DataFrame,
+    symbol: str,
+    source_table: str | None,
+    base_index: pd.Index,
+    field: str = "close",
+) -> tuple[pd.Series, pd.Series]:
+    if source_table == "macro_market_daily":
+        raw = _series(macro, symbol, field)
+        return _align_us_to_asia(raw, base_index)
+    raw = _series(market, symbol, field)
+    aligned = raw.reindex(base_index)
+    return aligned, pd.Series(base_index.astype(str), index=base_index, dtype="object")
+
+
+def _weighted_core(
+    market: pd.DataFrame,
+    macro: pd.DataFrame,
+    version: dict[str, Any],
+    versions: dict[str, dict[str, Any]],
+    base_index: pd.Index,
+) -> tuple[pd.Series, pd.Series, list[str]]:
     parts = []
+    date_parts = []
+    weights = []
+    missing = []
     for item in version.get("constituents", []):
+        ref = item.get("version_ref")
+        if ref:
+            child = versions.get(ref, {})
+            child_series, child_dates, child_missing = _weighted_core(market, macro, child, versions, base_index)
+            missing.extend(child_missing)
+            weight = float(item.get("weight") or 0)
+            if child_series.empty or child_series.dropna().empty:
+                missing.append(f"{ref}_missing")
+                continue
+            child_series = child_series / child_series.dropna().iloc[0] * 100
+            parts.append(child_series.rename(ref) * weight)
+            date_parts.append(child_dates.rename(ref))
+            weights.append(weight)
+            continue
         symbol = item.get("symbol")
         weight = float(item.get("weight") or 0)
         if not symbol or weight <= 0:
             continue
-        s = _series(market, symbol)
-        if not s.empty:
-            parts.append(s.rename(symbol) * weight)
+        s, dates = _source_series(market, macro, symbol, item.get("source_table"), base_index)
+        if s.dropna().empty:
+            missing.append(f"{symbol}_missing")
+            continue
+        s = s / s.dropna().iloc[0] * 100
+        parts.append(s.rename(symbol) * weight)
+        date_parts.append(dates.rename(symbol))
+        weights.append(weight)
     if not parts:
-        return pd.Series(dtype="float64")
-    aligned = pd.concat(parts, axis=1, join="inner").dropna()
-    return aligned.sum(axis=1)
+        return pd.Series(dtype="float64"), pd.Series(dtype="object"), missing
+    aligned = pd.concat(parts, axis=1).dropna(how="all")
+    available_weight = pd.concat([part.notna().astype(float) * weights[idx] for idx, part in enumerate(parts)], axis=1).sum(axis=1)
+    series = aligned.sum(axis=1) / available_weight.replace(0, float("nan"))
+    dates_df = pd.concat(date_parts, axis=1) if date_parts else pd.DataFrame(index=series.index)
+    latest_dates = dates_df.apply(lambda row: "|".join(sorted({str(x) for x in row.dropna() if str(x) != "missing"})) or "missing", axis=1)
+    return series.astype("float64"), latest_dates.reindex(series.index), missing
 
 
 def _load_s1(indicators_dir: Path) -> pd.DataFrame:
@@ -212,10 +319,13 @@ def _load_s2(path: Path) -> pd.DataFrame:
 
 def _build_research_frame(
     market_daily_path: Path,
+    macro_market_daily_path: Path,
     indicators_dir: Path,
     s2_scores_path: Path,
     config: dict[str, Any],
+    versions_payload: dict[str, Any],
     ai_version: dict[str, Any],
+    tech_version: dict[str, Any],
     report_date: str | None,
 ) -> ResearchData:
     symbols = config["symbols"]
@@ -225,7 +335,20 @@ def _build_research_frame(
     a_health_symbol = symbols.get("a_health_benchmark", "512170.SH")
     ai_semi_symbol = symbols.get("ai_semi", "512760.SH")
     market = _load_market(market_daily_path)
-    ai_core = _weighted_ai_core(market, ai_version)
+    macro = _load_macro(macro_market_daily_path)
+    base_parts = [
+        _series(market, bio_symbol),
+        _series(market, health_symbol),
+        _series(market, a_bio_symbol),
+        _series(market, a_health_symbol),
+    ]
+    base = pd.concat(base_parts, axis=1, join="inner").dropna().sort_index()
+    if report_date:
+        base = base[base.index <= report_date.replace("-", "")]
+    base_index = base.index
+    versions = _versions_by_id(versions_payload)
+    ai_core, ai_dates, ai_missing = _weighted_core(market, macro, ai_version, versions, base_index)
+    tech_core, tech_dates, tech_missing = _weighted_core(market, macro, tech_version, versions, base_index)
 
     close_series = {
         "bio_close": _series(market, bio_symbol),
@@ -233,13 +356,16 @@ def _build_research_frame(
         "a_bio_close": _series(market, a_bio_symbol),
         "a_health_close": _series(market, a_health_symbol),
         "ai_core_close": ai_core,
+        "tech_core_close": tech_core,
         "ai_semi_close": _series(market, ai_semi_symbol),
     }
     amount_series = {
         "bio_amount": _series(market, bio_symbol, "amount"),
-        "ai_amount": _series(market, ai_version.get("constituents", [{}])[0].get("symbol", ""), "amount"),
+        "tech_amount": _series(market, tech_version.get("constituents", [{}])[0].get("symbol", ""), "amount"),
     }
     missing = [name for name, value in close_series.items() if value.empty and name.endswith("_close")]
+    missing.extend(ai_missing)
+    missing.extend(tech_missing)
     frame = pd.concat(close_series, axis=1, join="inner").sort_index()
     for name, values in amount_series.items():
         frame[name] = values.reindex(frame.index)
@@ -247,24 +373,29 @@ def _build_research_frame(
         frame = frame[frame.index <= report_date.replace("-", "")]
     max_days = int(config.get("max_history_trading_days", 250))
     frame = frame.tail(max_days + 1).copy()
-    for col in ["bio_close", "health_close", "a_bio_close", "a_health_close", "ai_core_close", "ai_semi_close"]:
+    for col in ["bio_close", "health_close", "a_bio_close", "a_health_close", "ai_core_close", "tech_core_close", "ai_semi_close"]:
         frame[col.replace("_close", "_ret")] = frame[col].pct_change()
     frame["bio_vs_health"] = frame["bio_ret"] - frame["health_ret"]
     frame["bio_vs_ai"] = frame["bio_ret"] - frame["ai_core_ret"]
+    frame["bio_vs_tech"] = frame["bio_ret"] - frame["tech_core_ret"]
     frame["a_bio_vs_health"] = frame["a_bio_ret"] - frame["a_health_ret"]
     frame["bio_amount_ratio_5_20"] = frame["bio_amount"].rolling(5).mean() / frame["bio_amount"].rolling(20).mean()
-    frame["ai_amount_ratio_5_20"] = frame["ai_amount"].rolling(5).mean() / frame["ai_amount"].rolling(20).mean()
+    frame["tech_amount_ratio_5_20"] = frame["tech_amount"].rolling(5).mean() / frame["tech_amount"].rolling(20).mean()
     frame["bio_rel_5d"] = _period_return(frame["bio_close"], 5) - _period_return(frame["health_close"], 5)
     frame["bio_rel_10d"] = _period_return(frame["bio_close"], 10) - _period_return(frame["health_close"], 10)
     frame["ai_5d"] = _period_return(frame["ai_core_close"], 5)
     frame["ai_10d"] = _period_return(frame["ai_core_close"], 10)
+    frame["tech_5d"] = _period_return(frame["tech_core_close"], 5)
+    frame["tech_10d"] = _period_return(frame["tech_core_close"], 10)
     frame["market_state"] = _market_state(frame, config)
     frame["ai_state"] = _ai_state(frame, config)
+    frame["tech_state"] = _tech_state(frame, config)
     frame["bio_outperform_streak"] = _streak(frame["bio_vs_health"] > 0)
     frame["a_share_date"] = frame.index
     frame["hk_date"] = frame.index
-    frame["ai_core_date"] = frame.index
-    frame["us_close_date"] = "not_applicable"
+    frame["ai_core_date"] = ai_dates.reindex(frame.index).fillna("missing")
+    frame["tech_core_date"] = tech_dates.reindex(frame.index).fillna("missing")
+    frame["us_close_date"] = frame["ai_core_date"].astype(str).str.split("|").str[0]
     s1 = _load_s1(indicators_dir)
     if not s1.empty:
         frame = frame.merge(s1, how="left", left_index=True, right_on="trade_date").set_index("trade_date")
@@ -272,7 +403,7 @@ def _build_research_frame(
     if not s2.empty:
         keep = ["trade_date", "s2_adjusted_score", "s2_event_score", "s2_conversion_score"]
         frame = frame.merge(s2[[c for c in keep if c in s2.columns]], how="left", left_index=True, right_on="trade_date").set_index("trade_date")
-    frame = frame.dropna(subset=["bio_ret", "health_ret", "ai_core_ret"], how="any").tail(max_days)
+    frame = frame.dropna(subset=["bio_ret", "health_ret", "ai_core_ret", "tech_core_ret"], how="any").tail(max_days)
     latest_date = str(frame.index.max()) if not frame.empty else (report_date or "")
     clean_report_date = f"{latest_date[:4]}-{latest_date[4:6]}-{latest_date[6:]}" if len(latest_date) == 8 else str(latest_date)
     return ResearchData(clean_report_date, frame, dict(symbols), missing)
@@ -341,7 +472,7 @@ def _ai_state(frame: pd.DataFrame, config: dict[str, Any]) -> pd.Series:
             state = "AI_HIGH_SIDEWAYS"
         if pd.notna(ai_ret) and pd.notna(ai_5d) and ai_ret < -strong and ai_5d > 0:
             state = "AI_PROFIT_TAKING"
-        if pd.notna(row.get("ai_amount_ratio_5_20")) and row.get("ai_amount_ratio_5_20") >= vol_stall and pd.notna(ai_ret) and abs(ai_ret) <= daily:
+        if pd.notna(row.get("tech_amount_ratio_5_20")) and row.get("tech_amount_ratio_5_20") >= vol_stall and pd.notna(ai_ret) and abs(ai_ret) <= daily:
             state = "AI_HIGH_VOLUME_STALL"
         if pd.notna(row.get("ai_10d")) and row.get("ai_10d") < -2 * daily:
             state = "AI_TREND_BREAK"
@@ -355,6 +486,31 @@ def _ai_state(frame: pd.DataFrame, config: dict[str, Any]) -> pd.Series:
     return pd.Series(states, index=frame.index)
 
 
+def _tech_state(frame: pd.DataFrame, config: dict[str, Any]) -> pd.Series:
+    th = config.get("ai_state_thresholds", {})
+    daily = float(th.get("daily_move", 0.005))
+    up_streak = _streak(frame["tech_core_ret"] > 0)
+    down_streak = _streak(frame["tech_core_ret"] < 0)
+    states = []
+    for idx, row in frame.iterrows():
+        ret = row.get("tech_core_ret")
+        state = "TECH_GROWTH_NEUTRAL"
+        if pd.notna(ret) and ret > daily:
+            state = "TECH_GROWTH_SINGLE_UP"
+        elif pd.notna(ret) and ret < -daily:
+            state = "TECH_GROWTH_SINGLE_DOWN"
+        if up_streak.loc[idx] >= 3:
+            state = "TECH_GROWTH_3D_PLUS_UP"
+        elif up_streak.loc[idx] >= 2:
+            state = "TECH_GROWTH_2D_UP"
+        if down_streak.loc[idx] >= 3:
+            state = "TECH_GROWTH_3D_PLUS_DOWN"
+        elif down_streak.loc[idx] >= 2:
+            state = "TECH_GROWTH_2D_DOWN"
+        states.append(state)
+    return pd.Series(states, index=frame.index)
+
+
 def _window_stats(frame: pd.DataFrame, config: dict[str, Any]) -> list[dict[str, str]]:
     rows = []
     for window in [int(x) for x in config.get("validation_windows", [20, 60, 120, 250])]:
@@ -362,6 +518,7 @@ def _window_stats(frame: pd.DataFrame, config: dict[str, Any]) -> list[dict[str,
         for name, col in [
             ("159567绝对收益", "bio_ret"),
             ("159567相对159557超额", "bio_vs_health"),
+            ("159567相对TECH_GROWTH_CORE超额", "bio_vs_tech"),
             ("159567相对AI_CORE超额", "bio_vs_ai"),
             ("589720绝对收益", "a_bio_ret"),
             ("589720相对医疗宽基超额", "a_bio_vs_health"),
@@ -437,6 +594,9 @@ def _ai_state_stats(frame: pd.DataFrame, config: dict[str, Any]) -> list[dict[st
     for state in sorted(set(frame["ai_state"].dropna())):
         mask = frame["ai_state"] == state
         rows.extend(_forward_rows(frame, mask, state, "ai_state", config))
+    for state in sorted(set(frame["tech_state"].dropna())):
+        mask = frame["tech_state"] == state
+        rows.extend(_forward_rows(frame, mask, state, "tech_growth_state", config))
     for state in ["AI_DOWN_RISK_ON", "AI_DOWN_RISK_OFF"]:
         mask = frame["ai_state"] == state
         if mask.sum() == 0:
@@ -451,12 +611,14 @@ def _forward_rows(frame: pd.DataFrame, mask: pd.Series, condition: str, conditio
             bio_future = frame["bio_ret"]
             rel_future = frame["bio_vs_health"]
             ai_excess = frame["bio_vs_ai"]
+            tech_excess = frame["bio_vs_tech"]
             a_future = frame["a_bio_ret"]
             s1_future = frame.get("s1_total_change", pd.Series(index=frame.index, dtype="float64"))
         else:
             bio_future = frame["bio_close"].shift(-horizon) / frame["bio_close"] - 1
             rel_future = bio_future - (frame["health_close"].shift(-horizon) / frame["health_close"] - 1)
             ai_excess = bio_future - (frame["ai_core_close"].shift(-horizon) / frame["ai_core_close"] - 1)
+            tech_excess = bio_future - (frame["tech_core_close"].shift(-horizon) / frame["tech_core_close"] - 1)
             a_future = frame["a_bio_close"].shift(-horizon) / frame["a_bio_close"] - 1
             s1_future = frame.get("s1_total", pd.Series(index=frame.index, dtype="float64")).shift(-horizon) - frame.get("s1_total", pd.Series(index=frame.index, dtype="float64"))
         selected = mask & bio_future.notna()
@@ -470,8 +632,10 @@ def _forward_rows(frame: pd.DataFrame, mask: pd.Series, condition: str, conditio
             "bio_abs_median": _fmt_num(float(bio_future[selected].median()) if selected.any() else None),
             "bio_max_drawdown": _fmt_num(_max_drawdown(bio_future[selected])),
             "bio_vs_health_win_rate": _fmt_num(float(rel_future[selected].gt(0).mean()) if selected.any() else None),
+            "bio_vs_tech_win_rate": _fmt_num(float(tech_excess[selected].gt(0).mean()) if selected.any() else None),
             "bio_vs_ai_win_rate": _fmt_num(float(ai_excess[selected].gt(0).mean()) if selected.any() else None),
             "bio_vs_health_mean": _fmt_num(float(rel_future[selected].mean()) if selected.any() else None),
+            "bio_vs_tech_mean": _fmt_num(float(tech_excess[selected].mean()) if selected.any() else None),
             "bio_vs_ai_mean": _fmt_num(float(ai_excess[selected].mean()) if selected.any() else None),
             "a_bio_mean": _fmt_num(float(a_future[selected].mean()) if selected.any() else None),
             "s1_future_change_mean": _fmt_num(float(s1_future[selected].mean()) if selected.any() else None),
@@ -531,6 +695,12 @@ def _right_side_score(frame: pd.DataFrame, config: dict[str, Any]) -> dict[str, 
         raw_weights[col] = max(0.0, float(corr)) if pd.notna(corr) else 0.0
     if sum(raw_weights.values()) <= 0:
         raw_weights = {col: 1.0 for col in features.columns}
+    tech_ai_corr = None
+    if {"tech_growth_not_crowding", "ai_not_crowding"}.issubset(features.columns):
+        tech_ai_corr = features["tech_growth_not_crowding"].corr(features["ai_not_crowding"])
+        if pd.notna(tech_ai_corr) and abs(float(tech_ai_corr)) >= 0.80:
+            raw_weights["tech_growth_not_crowding"] *= 0.5
+            raw_weights["ai_not_crowding"] *= 0.5
     total = sum(raw_weights.values())
     weights = {col: value / total for col, value in raw_weights.items()}
     current = features.iloc[-1].fillna(0.0)
@@ -549,7 +719,7 @@ def _right_side_score(frame: pd.DataFrame, config: dict[str, Any]) -> dict[str, 
         "oos_samples": str(len(test)),
         "oos_direction_accuracy": _fmt_num(oos_acc),
         "feature_contributions": "; ".join(f"{k}={v:.2f}" for k, v in sorted(contributions.items(), key=lambda item: item[1], reverse=True)),
-        "duplicate_counting_check": "1d/5d/10d relative strength collapsed into one bio_relative_strength feature; S1 total and components are grouped to reduce double counting.",
+        "duplicate_counting_check": f"1d/5d/10d relative strength collapsed into one bio_relative_strength feature; S1 total and components are grouped; TECH_GROWTH_CORE and AI_CORE corr={_fmt_num(float(tech_ai_corr) if pd.notna(tech_ai_corr) else None)}, high-correlation pairs are half-weighted.",
     }
 
 
@@ -569,6 +739,7 @@ def _right_side_features(frame: pd.DataFrame) -> pd.DataFrame:
     ], axis=1).mean(axis=1)
     out["s2_conversion"] = _scale(frame.get("s2_conversion_score", pd.Series(index=frame.index)), 0.4, 0.7)
     out["volume"] = _scale(frame["bio_amount_ratio_5_20"], 0.8, 1.5)
+    out["tech_growth_not_crowding"] = _scale(frame["bio_vs_tech"], -0.03, 0.03)
     out["ai_not_crowding"] = _scale(frame["bio_vs_ai"], -0.03, 0.03)
     out["a_share_lead"] = _scale(frame["a_bio_ret"] - frame["bio_ret"], -0.02, 0.02)
     return out.clip(0, 1)
@@ -606,8 +777,10 @@ def _falsification(
         support.append(f"159567当日绝对上涨 {_fmt_pct(latest.get('bio_ret'))}")
     if _num(latest.get("S1-05")) and latest.get("S1-05") >= 0.40:
         support.append(f"S1-05广度达到{_fmt_pct(latest.get('S1-05'))}")
+    if _num(latest.get("tech_core_ret")) and latest.get("tech_core_ret") > 0 and _num(latest.get("bio_vs_tech")) and latest.get("bio_vs_tech") < 0:
+        opposition.append(f"科技成长上涨时159567跑输TECH_GROWTH_CORE {_fmt_pct(latest.get('bio_vs_tech'))}")
     if _num(latest.get("ai_core_ret")) and latest.get("ai_core_ret") > 0 and _num(latest.get("bio_vs_ai")) and latest.get("bio_vs_ai") < 0:
-        opposition.append(f"AI上涨时159567跑输AI {_fmt_pct(latest.get('bio_vs_ai'))}")
+        opposition.append(f"AI_CORE上涨时159567跑输AI_CORE {_fmt_pct(latest.get('bio_vs_ai'))}")
     if _num(latest.get("bio_ret")) and latest.get("bio_ret") < 0:
         opposition.append(f"159567绝对收益为负 {_fmt_pct(latest.get('bio_ret'))}")
     if _num(latest.get("bio_vs_health")) and latest.get("bio_vs_health") < 0:
@@ -665,18 +838,30 @@ def _position_action(frame: pd.DataFrame, right_side: dict[str, str], falsificat
     }
 
 
-def _audit_system(data: ResearchData, config: dict[str, Any], ai_version: dict[str, Any], market_path: Path, indicators_dir: Path, s2_scores_path: Path) -> dict[str, Any]:
+def _audit_system(
+    data: ResearchData,
+    config: dict[str, Any],
+    ai_version: dict[str, Any],
+    tech_version: dict[str, Any],
+    market_path: Path,
+    macro_path: Path,
+    indicators_dir: Path,
+    s2_scores_path: Path,
+) -> dict[str, Any]:
     frame = data.frame
     return {
         "ai_core_constituents": ai_version.get("constituents", []),
         "ai_core_version": ai_version.get("version_id"),
         "ai_core_scope": ai_version.get("market_scope"),
+        "tech_core_constituents": tech_version.get("constituents", []),
+        "tech_core_version": tech_version.get("version_id"),
+        "tech_core_scope": tech_version.get("market_scope"),
         "ai_core_adjustment": ai_version.get("adjustment_policy"),
         "current_returns": "1/3/5/10/20日收益按共同有效交易日收盘价 close_t / close_t-n - 1 计算；缺失不补0。",
-        "date_mapping": "当前CN_AI_CORE_V1全为亚洲上市ETF，同一亚洲交易日内对齐；美股AI版本未启用，对应美股收盘日期为not_applicable。",
+        "date_mapping": "TECH_GROWTH_CORE使用亚洲交易日同日收盘；AI_US/AI_GLOBAL中的美股成分按亚洲交易日映射上一可用美股收盘，禁止使用同日未来美股收盘。",
         "future_function": "历史统计使用当日及未来收益时只用于回测表，日报当前状态不使用未来收益；右侧评分训练目标shift(-5)仅用于历史权重估计。",
         "calendar_join": "研究表用共同交易日inner join，不按自然日直接填充；但原S1指标内部使用自然日扩大窗口后取可得交易日。",
-        "holiday_mismatch": "当前单一亚洲交易体系风险较低；如启用美股AI_CORE需使用上一美股收盘映射。",
+        "holiday_mismatch": "跨市场分析保留a_share_date/hk_date/us_close_date/ai_core_date字段；美股节假日沿用最近已收盘日并降低新鲜度。",
         "duplicates": str(int(frame.index.duplicated().sum())),
         "return_window_reuse": "窗口统计按每个交易日滚动样本，回测会有重叠持有期，报告标注为描述性/验证性统计，不视为独立交易次数。",
         "adjustment_mix": "market_daily ETF adjusted_type当前为none；HK个股缓存存在qfq来源但本模块只用ETF market_daily。",
@@ -686,10 +871,11 @@ def _audit_system(data: ResearchData, config: dict[str, Any], ai_version: dict[s
         "realtime": "当前状态、当日收益、右侧评分、仓位标签。",
         "carried_forward": "S1/S2历史分数按已生成日报读取；S2内部沿用项仍由原S2报告披露。",
         "stale": data.missing,
-        "missing_low_confidence": data.missing + (["US_AI_CORE missing"] if ai_version.get("market_scope") != "US AI proxy" else []),
+        "missing_low_confidence": data.missing,
         "reproducible": "固定输入文件、AI_CORE版本和配置即可复现。",
         "tests": "新增单元/完整性测试覆盖；原S2测试保留。",
         "market_path": str(market_path),
+        "macro_path": str(macro_path),
         "indicators_dir": str(indicators_dir),
         "s2_scores_path": str(s2_scores_path),
         "sample_count": str(len(frame)),
@@ -698,13 +884,19 @@ def _audit_system(data: ResearchData, config: dict[str, Any], ai_version: dict[s
 
 def _render_audit_report(audit: dict[str, Any]) -> str:
     lines = [
-        "# AI—创新药风格关系模块审计报告",
+        "# AI/科技成长—创新药风格关系模块审计报告",
+        "",
+        "## 当前问题确认",
+        "",
+        "- 原CN_AI_CORE_V1 = 100% x 588000.SH。",
+        "- 588000.SH代表科创50科技成长风格，不是纯AI指数；不得继续把588000涨跌直接表述为AI涨跌。",
+        "- 本次修复后：588000.SH迁移为TECH_GROWTH_CORE，AI_CORE改用AI_CHINA/AI_US/AI_GLOBAL版本化篮子。",
         "",
         "## 20项审计结论",
         "",
-        f"1. 当前AI_CORE：{audit['ai_core_version']}，成分={audit['ai_core_constituents']}。",
-        "2. 权重：当前版本为固定权重，588000.SH=100%。",
-        f"3. 市场范围：{audit['ai_core_scope']}，不是美股AI，也不是混合AI。",
+        f"1. 当前TECH_GROWTH_CORE：{audit['tech_core_version']}，成分={audit['tech_core_constituents']}。",
+        f"2. 当前AI_CORE：{audit['ai_core_version']}，成分={audit['ai_core_constituents']}。",
+        f"3. 市场范围：TECH={audit['tech_core_scope']}；AI={audit['ai_core_scope']}。",
         f"4. 收益计算：{audit['current_returns']}",
         f"5. 日期映射：{audit['date_mapping']}",
         f"6. 未来函数：{audit['future_function']}",
@@ -726,6 +918,7 @@ def _render_audit_report(audit: dict[str, Any]) -> str:
         "## 数据源",
         "",
         f"- market_daily: {audit['market_path']}",
+        f"- macro_market_daily: {audit['macro_path']}",
         f"- S1 indicators: {audit['indicators_dir']}",
         f"- S2 scores: {audit['s2_scores_path']}",
         f"- 有效样本数：{audit['sample_count']}",
@@ -738,6 +931,7 @@ def _render_validation_report(
     data: ResearchData,
     config: dict[str, Any],
     ai_version: dict[str, Any],
+    tech_version: dict[str, Any],
     window_stats: list[dict[str, str]],
     state_stats: list[dict[str, str]],
     lead_stats: list[dict[str, str]],
@@ -751,7 +945,7 @@ def _render_validation_report(
     ai_down_rows = [row for row in state_stats if row["condition"] in {"AI_SINGLE_DOWN", "AI_2D_DOWN", "AI_3D_PLUS_DOWN", "AI_DOWN_RISK_ON", "AI_DOWN_RISK_OFF"} and row["horizon_days"] == "0"]
     lead_best = _best_lead_row(lead_stats)
     lines = [
-        "# AI—创新药风格验证日报",
+        "# AI/科技成长—创新药风格验证日报",
         "",
         "## 1. 数据日期",
         "",
@@ -759,15 +953,18 @@ def _render_validation_report(
         f"- A股数据日期：{latest.get('a_share_date', 'missing')}",
         f"- 港股数据日期：{latest.get('hk_date', 'missing')}",
         f"- 对应美股收盘日期：{latest.get('us_close_date', 'not_applicable')}",
+        f"- TECH_GROWTH_CORE版本：{tech_version.get('version_id')}；{tech_version.get('market_scope')}",
         f"- AI_CORE版本：{ai_version.get('version_id')}；{ai_version.get('market_scope')}",
         f"- 有效样本数：{len(frame)}；历史上限：{config.get('max_history_trading_days', 250)}",
         "",
         "## 2. 今日状态",
         "",
+        f"- 科技成长状态：{latest.get('tech_state', 'missing')}",
         f"- AI状态：{latest.get('ai_state', 'missing')}",
         f"- 市场状态：{latest.get('market_state', 'missing')}",
         f"- 创新药相对医疗：{_fmt_pct(latest.get('bio_vs_health'))}",
-        f"- 创新药相对AI：{_fmt_pct(latest.get('bio_vs_ai'))}",
+        f"- 创新药相对科技成长：{_fmt_pct(latest.get('bio_vs_tech'))}",
+        f"- 创新药相对AI_CORE：{_fmt_pct(latest.get('bio_vs_ai'))}",
         f"- 589720情绪状态：{_a_temp_state(latest)}",
         f"- A股是否领先港股：{lead_best.get('condition', '未验证') if lead_best else '未验证'}",
         f"- 右侧确认评分：{right_side.get('right_side_score', 'missing')}；{right_side.get('right_side_level', 'missing')}",
@@ -775,8 +972,8 @@ def _render_validation_report(
         "",
         "## 3. 多窗口结论",
         "",
-        "| 窗口 | AI—创新药关系 | 绝对上涨胜率 | 相对医疗跑赢胜率 | 稳定性 |",
-        "| --- | --- | ---: | ---: | --- |",
+        "| 窗口 | 科技成长—创新药关系 | AI—创新药关系 | 绝对上涨胜率 | 相对医疗跑赢胜率 | 稳定性 |",
+        "| --- | --- | --- | ---: | ---: | --- |",
         *window_summary,
         "",
         "## 4. 最强支持证据",
@@ -787,14 +984,16 @@ def _render_validation_report(
         "",
         *[f"- {item}" for item in _split_evidence(falsification.get("opposition_evidence"))[:3]],
         "",
-        "## 6. AI回调验证",
+        "## 6. 科技成长/AI回调验证",
         "",
+        f"- 科技成长是否回调：{'是' if latest.get('tech_core_ret', 0) < 0 else '否'}",
         f"- AI是否回调：{'是' if latest.get('ai_core_ret', 0) < 0 else '否'}",
         f"- AI回调类型：{latest.get('ai_state', 'missing')}",
         f"- 市场是否Risk Off：{'是' if latest.get('market_state') == 'RISK_OFF' else '否'}",
         f"- 159567绝对收益：{_fmt_pct(latest.get('bio_ret'))}",
         f"- 159567相对159557超额：{_fmt_pct(latest.get('bio_vs_health'))}",
-        f"- 159567相对AI超额：{_fmt_pct(latest.get('bio_vs_ai'))}",
+        f"- 159567相对科技成长超额：{_fmt_pct(latest.get('bio_vs_tech'))}",
+        f"- 159567相对AI_CORE超额：{_fmt_pct(latest.get('bio_vs_ai'))}",
         f"- 是否属于有效轮动：{_valid_rotation_text(latest, ai_down_rows)}",
         "",
         "## 7. A股领先港股验证",
@@ -809,6 +1008,7 @@ def _render_validation_report(
         "## 8. 当前命题",
         "",
         f"- AI资金虹吸假设：{_ai_siphon_text(latest)}",
+        f"- 科技成长虹吸假设：{_tech_siphon_text(latest)}",
         f"- 创新药接力假设：{_relay_text(right_side, falsification)}",
         f"- A股领先港股假设：{_a_lead_thesis_text(lead_best)}",
         f"- 状态：{falsification.get('thesis_state', 'unchanged')}",
@@ -823,7 +1023,8 @@ def _render_validation_report(
         "",
         "## 10. 当前仍不能确认的事项",
         "",
-        "- 美股AI_CORE未启用，当前无法验证美股AI对亚洲创新药的跨市场虹吸。",
+        "- AI_CORE已拆分为AI_CHINA/AI_US/AI_GLOBAL；若宏观美股数据缺失，AI_GLOBAL置信度下降。",
+        "- 当前只能在可用样本内判断创新药相对医疗、相对科技成长、相对AI_CORE的关系；不得用588000替代AI。",
         "- 当前复权口径为unadjusted_close，ETF分红/拆分仍可能影响历史收益精度。",
         "- 120/250日窗口包含重叠持有期统计，不等于独立交易次数。",
         "- 若20/60日与120/250日结论冲突，应解释为近期关系变化，但长期稳定性不足。",
@@ -841,10 +1042,12 @@ def _window_summary_rows(window_stats: list[dict[str, str]]) -> list[str]:
     for window in ["20", "60", "120", "250"]:
         bio = by_window.get(window, {}).get("159567绝对收益", {})
         rel = by_window.get(window, {}).get("159567相对159557超额", {})
+        tech = by_window.get(window, {}).get("159567相对TECH_GROWTH_CORE超额", {})
         ai = by_window.get(window, {}).get("159567相对AI_CORE超额", {})
+        tech_relation = "跑赢科技成长" if _float_or_none(tech.get("mean")) and float(tech["mean"]) > 0 else "跑输科技成长"
         relation = "跑赢AI" if _float_or_none(ai.get("mean")) and float(ai["mean"]) > 0 else "跑输AI"
-        stability = _stability_text(bio, rel, ai)
-        rows.append(f"| {window}日 | {relation} | {bio.get('win_rate', 'missing')} | {rel.get('win_rate', 'missing')} | {stability} |")
+        stability = _stability_text(bio, rel, tech, ai)
+        rows.append(f"| {window}日 | {tech_relation} | {relation} | {bio.get('win_rate', 'missing')} | {rel.get('win_rate', 'missing')} | {stability} |")
     return rows
 
 
@@ -903,9 +1106,17 @@ def _current_lead_valid(latest: pd.Series) -> str:
 
 def _ai_siphon_text(latest: pd.Series) -> str:
     if latest.get("ai_core_ret", 0) > 0 and latest.get("bio_vs_ai", 0) < 0:
-        return "strengthened：AI上涨且159567跑输AI。"
+        return "strengthened：AI_CORE上涨且159567跑输AI_CORE。"
     if latest.get("ai_core_ret", 0) < 0 and latest.get("bio_ret", 0) > 0:
-        return "weakened：AI回调时159567上涨。"
+        return "weakened：AI_CORE回调时159567上涨。"
+    return "unchanged：当前证据不足。"
+
+
+def _tech_siphon_text(latest: pd.Series) -> str:
+    if latest.get("tech_core_ret", 0) > 0 and latest.get("bio_vs_tech", 0) < 0:
+        return "strengthened：科技成长上涨且159567跑输TECH_GROWTH_CORE。"
+    if latest.get("tech_core_ret", 0) < 0 and latest.get("bio_ret", 0) > 0:
+        return "weakened：科技成长回调时159567上涨。"
     return "unchanged：当前证据不足。"
 
 
