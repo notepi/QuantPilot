@@ -288,7 +288,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | final_data_source | citydata_fund_daily |
 | 159567_audit_final_source | processed |
 | 159567_audit_final_source_reason | processed table has latest symbol row |
-| 159567_audit_fetched_at | 2026-06-23T19:24:52 |
+| 159567_audit_fetched_at | 2026-06-23T19:33:42 |
 | 159567_audit_data_quality | latest_valid |
 | 159567_audit_can_use_for_latest_signal | true |
 | 159567_audit_raw_latest_date | missing |
@@ -296,7 +296,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | 159567_audit_processed_latest_date | 20260623 |
 | 159557_audit_final_source | processed |
 | 159557_audit_final_source_reason | processed table has latest symbol row |
-| 159557_audit_fetched_at | 2026-06-23T19:24:52 |
+| 159557_audit_fetched_at | 2026-06-23T19:33:42 |
 | 159557_audit_data_quality | latest_valid |
 | 159557_audit_can_use_for_latest_signal | true |
 | 159557_audit_raw_latest_date | missing |
