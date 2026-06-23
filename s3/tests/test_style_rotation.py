@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from s2.style_rotation import calculate_style_analysis
+from s3.style_rotation import calculate_style_analysis
 
 
 def _write_market(path: Path, closes: dict[str, list[float]]) -> None:

@@ -48,7 +48,10 @@ uv run python -m s3.daily_flow
 
 ## 迁移说明
 
-S3 模块从 s2/ 迁移而来，s2 中保留兼容 wrapper：
-- `s2/generate_ai_style_report.py` → 转发到 `s3.generate_report`
-- `s2/style_rotation.py` → 保留原文件（S2 不直接 import）
-- `s2/ai_biotech_validation.py` → 保留原文件（S2 不直接 import）
+S3 模块从 s2/ 迁移而来，s2 中的遗留文件和兼容 wrapper 已清除：
+- `s2/generate_ai_style_report.py` → 已删除（daily_flow 直接调用 s3）
+- `s2/style_rotation.py` → 已删除（s3/style_rotation.py 为正式版）
+- `s2/ai_biotech_validation.py` → 已删除（s3/validation.py 为正式版）
+- `s2/style_config.json` → 已删除（s3/config.json 为正式版）
+- `s2/ai_core_versions.json` → 已删除（s3/versions.json 为正式版）
+- 测试已从 s2/tests/ 迁移到 s3/tests/

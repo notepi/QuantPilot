@@ -4,8 +4,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from s2.ai_biotech_validation import _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
-from s2.generate_ai_style_report import generate_ai_style_report
+from s3.validation import _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
+from s3.generate_report import generate_ai_style_report
 
 
 def _write_config(path: Path) -> None:
@@ -257,7 +257,7 @@ def test_ai_core_is_not_single_588000_and_us_mapping_has_no_future_function(tmp_
 
 
 def test_real_ai_core_versions_split_tech_growth_from_ai_core():
-    payload = json.loads(Path("s2/ai_core_versions.json").read_text(encoding="utf-8"))
+    payload = json.loads(Path("s3/versions.json").read_text(encoding="utf-8"))
     versions = {item["version_id"]: item for item in payload["versions"]}
 
     assert payload["active_version_id"] == "AI_GLOBAL_V1"
