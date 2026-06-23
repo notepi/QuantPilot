@@ -51,10 +51,13 @@ class S1_01CapitalFlow(BaseIndicator):
         )
 
         if df is None or len(df) < 2:
-            return self.create_result(0.0, trade_date=end_date)
+            return self.create_result(0.0, trade_date=end_date, data_date="")
 
         # 按日期排序
         df = df.sort_values("trade_date")
+
+        # 获取实际数据最新日期
+        actual_data_date = str(df["trade_date"].max())
 
         # 计算每日份额变化
         df["share_change"] = df["fd_share"].diff()
@@ -70,6 +73,7 @@ class S1_01CapitalFlow(BaseIndicator):
         return self.create_result(
             value=ratio,
             trade_date=end_date,
+            data_date=actual_data_date,
             raw_data={
                 "positive_days": positive_days,
                 "total_days": total_days,

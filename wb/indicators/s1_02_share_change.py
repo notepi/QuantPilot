@@ -50,10 +50,13 @@ class S1_02ShareChange(BaseIndicator):
         )
 
         if df is None or len(df) < 2:
-            return self.create_result(0.0, trade_date=end_date)
+            return self.create_result(0.0, trade_date=end_date, data_date="")
 
         # 按日期排序
         df = df.sort_values("trade_date")
+
+        # 获取实际数据最新日期
+        actual_data_date = str(df["trade_date"].max())
 
         # 计算份额变化率
         start_share = df["fd_share"].iloc[0]
@@ -67,6 +70,7 @@ class S1_02ShareChange(BaseIndicator):
         return self.create_result(
             value=change_rate,
             trade_date=end_date,
+            data_date=actual_data_date,
             raw_data={
                 "start_share": start_share,
                 "end_share": end_share,

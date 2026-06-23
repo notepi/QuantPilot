@@ -63,8 +63,23 @@ def generate_report() -> str:
         for ind in data["indicator_results"]:
             record[ind["code"]] = ind["value"]
             record[f"{ind['code']}_预期"] = ind["expectation"]
+            # 收集数据日期
+            if ind.get("data_date"):
+                record[f"{ind['code']}_数据日期"] = ind["data_date"]
         record["综合得分"] = data["total_score"]
         record["预期等级"] = data["expectation_level"]
+
+        # 检查数据日期是否一致
+        data_dates = set()
+        for ind in data["indicator_results"]:
+            if ind.get("data_date"):
+                data_dates.add(ind["data_date"])
+        if data_dates and len(data_dates) == 1:
+            record["数据日期"] = data_dates.pop()
+        elif data_dates:
+            record["数据日期"] = max(data_dates)  # 取最滞后的日期
+        else:
+            record["数据日期"] = ""
 
         records.append(record)
 
@@ -73,6 +88,12 @@ def generate_report() -> str:
 
     df = pd.DataFrame(records)
     df["日期"] = pd.to_datetime(df["日期"], format="%Y%m%d").dt.strftime("%Y-%m-%d")
+    # 格式化数据日期
+    if "数据日期" in df.columns:
+        df["数据日期"] = df["数据日期"].apply(
+            lambda x: pd.to_datetime(str(x), format="%Y%m%d").strftime("%Y-%m-%d")
+            if x and len(str(x)) == 8 else x
+        )
     df = df.sort_values("日期", ascending=False)
 
     # 构建 Markdown
@@ -80,6 +101,16 @@ def generate_report() -> str:
     lines.append("# 创新药投资阶段评价 - 指标日报")
     lines.append("")
     lines.append(f"**标的**: 589720.SH | **更新时间**: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    # 显示最新记录的数据日期信息
+    if len(df) > 0:
+        latest_row = df.iloc[0]
+        if latest_row.get("数据日期") and latest_row["数据日期"]:
+            report_date = latest_row["日期"]
+            data_date = latest_row["数据日期"]
+            if report_date != data_date:
+                lines.append(f"⚠️ **数据日期**: {data_date}（报告日期 {report_date}，份额数据滞后）")
+            else:
+                lines.append(f"**数据日期**: {data_date}（与报告日期一致）")
     lines.append("")
 
     # 表格1：指标值

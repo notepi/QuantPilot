@@ -162,7 +162,12 @@ def fetch_fund_daily(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
 
 def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
     """
-    获取ETF份额数据
+    获取ETF份额数据：citydata（历史）→ 东方财富（当天补充）→ 上交所（沪市备用）
+
+    数据源优先级：
+    1. citydata fund_share（历史数据完整）
+    2. 东方财富 fund_etf_spot_em（当天数据补充）
+    3. 上交所 fund_etf_scale_sse（沪市备用，当前有 akshare bug）
 
     注意：API 可能返回全部数据，需要在此过滤
 
@@ -177,18 +182,41 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     pro = citydata_pro_api()
     frames = []
 
+    # 1. 主源：citydata（历史数据）
     df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
     if df is not None and len(df) > 0 and "trade_date" in df.columns:
         df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
         frames.append(df)
     elif df is not None and len(df) > 0:
-        print(f"  {ts_code}: fund_share返回缺少trade_date，尝试交易所fallback；columns={list(df.columns)}")
+        print(f"  {ts_code}: fund_share返回缺少trade_date，尝试备用源；columns={list(df.columns)}")
 
+    # 2. 检查是否需要补充当天数据（东方财富备用源）
+    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    latest = str(combined["trade_date"].max()) if not combined.empty and "trade_date" in combined.columns else ""
+
+    if latest < end_date:
+        try:
+            em_df = fetch_fund_share_em(ts_code)
+            if em_df is not None and len(em_df) > 0:
+                # 校验：东方财富日期必须在 [start_date, end_date] 区间内，且大于 citydata 最新日期
+                em_date = str(em_df["trade_date"].iloc[0]) if "trade_date" in em_df.columns else ""
+                if em_date and em_date >= start_date and em_date <= end_date and em_date > latest:
+                    frames.append(em_df)
+                    print(f"  {ts_code}: 东方财富补充当天份额数据成功 (日期={em_date})")
+                elif em_date and em_date == latest:
+                    # 同日期，跳过不重复追加
+                    print(f"  {ts_code}: 东方财富日期={em_date} 与 citydata 一致，跳过")
+                elif em_date:
+                    print(f"  {ts_code}: 东方财富日期={em_date} 不在补充范围 [{latest}, {end_date}]，跳过")
+        except Exception as e:
+            print(f"  {ts_code}: 东方财富份额获取失败: {e}")
+
+    # 3. 上交所备用源（仅沪市 ETF）
     if ts_code.endswith(".SH"):
-        combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-        latest = str(combined["trade_date"].max()) if not combined.empty and "trade_date" in combined.columns else ""
-        if latest < end_date:
-            fallback_start = max(start_date, latest) if latest else start_date
+        combined2 = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        latest2 = str(combined2["trade_date"].max()) if not combined2.empty and "trade_date" in combined2.columns else ""
+        if latest2 < end_date:
+            fallback_start = max(start_date, latest2) if latest2 else start_date
             fallback = fetch_fund_share_sse(ts_code, fallback_start, end_date)
             if len(fallback) > 0:
                 frames.append(fallback)
@@ -199,7 +227,65 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     combined = pd.concat(frames, ignore_index=True)
     combined["trade_date"] = combined["trade_date"].astype(str)
     combined = combined[(combined["trade_date"] >= start_date) & (combined["trade_date"] <= end_date)]
+    # 去重：同 ts_code + trade_date 只保留最后一条（备用源覆盖主源）
+    if "ts_code" in combined.columns and "trade_date" in combined.columns:
+        combined = combined.drop_duplicates(subset=["ts_code", "trade_date"], keep="last")
     return combined
+
+
+def fetch_fund_share_em(ts_code: str) -> pd.DataFrame:
+    """从东方财富获取当天份额数据（fund_etf_spot_em）
+
+    注意：该接口只返回最新一条数据，没有历史区间。
+
+    Args:
+        ts_code: ETF代码，如 "589720.SH"
+
+    Returns:
+        DataFrame 包含 ts_code, trade_date, fd_share, source 字段
+    """
+    try:
+        import akshare as ak
+    except ImportError:
+        print(f"  {ts_code}: akshare不可用，跳过东方财富份额获取")
+        return pd.DataFrame()
+
+    code = ts_code.split(".")[0]
+    try:
+        df = ak.fund_etf_spot_em()
+    except Exception as e:
+        print(f"  {ts_code}: 东方财富 fund_etf_spot_em 调用失败: {e}")
+        return pd.DataFrame()
+
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
+
+    df["代码"] = df["代码"].astype(str)
+    hit = df[df["代码"] == code]
+
+    if len(hit) == 0:
+        return pd.DataFrame()
+
+    row = hit.iloc[0]
+    # 数据日期格式可能是 "20260622" 或 "2026-06-22"
+    raw_date = str(row.get("数据日期", ""))
+    trade_date = raw_date[:10].replace("-", "")
+
+    share_raw = row.get("最新份额")
+    if share_raw is None or share_raw == "" or share_raw == "-":
+        return pd.DataFrame()
+
+    try:
+        fd_share = float(share_raw) / 10000  # 转为万份
+    except (ValueError, TypeError):
+        return pd.DataFrame()
+
+    return pd.DataFrame([{
+        "ts_code": ts_code,
+        "trade_date": trade_date,
+        "fd_share": fd_share,
+        "source": "eastmoney_fund_etf_spot_em",
+    }])
 
 
 def fetch_fund_share_sse(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -277,6 +363,11 @@ def append_to_file(new_df: pd.DataFrame, filename: str, key_cols: list = None):
     """
     追加数据到本地文件（去重）
 
+    兼容策略：
+    - 新数据可能包含旧数据没有的列（如 source），合并时自动补 NaN
+    - 旧数据没有 source 字段时默认视为 citydata_fund_share
+    - 去重时 keep="last"，新数据覆盖旧数据
+
     Args:
         new_df: 新数据
         filename: 文件名
@@ -290,8 +381,15 @@ def append_to_file(new_df: pd.DataFrame, filename: str, key_cols: list = None):
     if filepath.exists():
         old_df = pd.read_csv(filepath)
 
+        # 旧记录补 source 默认值（仅 fund_share.csv）
+        if filename == "fund_share.csv" and "source" not in old_df.columns:
+            old_df["source"] = "citydata_fund_share"
+
         # 合并并去重
         combined = pd.concat([old_df, new_df], ignore_index=True)
+        for col in key_cols:
+            if col in combined.columns:
+                combined[col] = combined[col].astype(str)
         combined = combined.drop_duplicates(subset=key_cols, keep="last")
 
         # 按日期排序
@@ -300,6 +398,9 @@ def append_to_file(new_df: pd.DataFrame, filename: str, key_cols: list = None):
         combined.to_csv(filepath, index=False)
         print(f"  追加 {len(new_df)} 条，总计 {len(combined)} 条")
     else:
+        # 新文件也补 source 默认值
+        if filename == "fund_share.csv" and "source" not in new_df.columns:
+            new_df["source"] = "citydata_fund_share"
         new_df = new_df.sort_values(key_cols)
         new_df.to_csv(filepath, index=False)
         print(f"  新建 {len(new_df)} 条")
@@ -320,12 +421,15 @@ def update_fund_daily_incremental():
 
     today = datetime.now().strftime("%Y%m%d")
 
-    for ts_code in [ETF_CODE, BENCHMARK_CODE]:
+    for ts_code in [ETF_CODE, BENCHMARK_CODE, "159567.SZ"]:
         local_dates = get_local_dates("fund_daily.csv", ts_code)
 
         # 确定起始日期
         if ts_code == ETF_CODE:
             start = ETF_START_DATE
+        elif ts_code == "159567.SZ":
+            # 港股创新药ETF
+            start = "20240101"
         else:
             # 基准ETF更早，从2024年开始
             start = "20240101"

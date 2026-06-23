@@ -22,7 +22,8 @@ class IndicatorResult:
     threshold_meet: Optional[float] = None     # 符合预期阈值
     threshold_below: Optional[float] = None    # 低于预期阈值
     expectation: str = ""        # 预期判定结果
-    trade_date: str = ""         # 计算日期
+    trade_date: str = ""         # 计算日期（报告日期）
+    data_date: str = ""          # 实际数据日期（数据最新可得日期）
     raw_data: Optional[dict] = None  # 原始数据
 
     def evaluate_expectation(self) -> str:
@@ -46,7 +47,7 @@ class IndicatorResult:
 
     def to_dict(self) -> dict:
         """转换为字典"""
-        return {
+        result = {
             "code": self.code,
             "name": self.name,
             "value": self.value,
@@ -56,6 +57,9 @@ class IndicatorResult:
             "expectation": self.expectation or self.evaluate_expectation(),
             "trade_date": self.trade_date,
         }
+        if self.data_date:
+            result["data_date"] = self.data_date
+        return result
 
 
 class BaseIndicator(ABC):
@@ -110,14 +114,15 @@ class BaseIndicator(ABC):
         start = end - timedelta(days=n_days * 2)  # 预留足够空间
         return start.strftime("%Y%m%d"), end_date
 
-    def create_result(self, value: float, trade_date: str = "", raw_data: dict = None) -> IndicatorResult:
+    def create_result(self, value: float, trade_date: str = "", raw_data: dict = None, data_date: str = "") -> IndicatorResult:
         """
         创建指标结果对象
 
         Args:
             value: 计算值
-            trade_date: 交易日期
+            trade_date: 交易日期（报告日期）
             raw_data: 原始数据
+            data_date: 实际数据日期
 
         Returns:
             IndicatorResult
@@ -133,6 +138,7 @@ class BaseIndicator(ABC):
             threshold_meet=self.threshold_meet,
             threshold_below=self.threshold_below,
             trade_date=trade_date,
+            data_date=data_date,
             raw_data=raw_data,
         )
 
