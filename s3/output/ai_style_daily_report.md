@@ -4,7 +4,7 @@
 
 - 报告日期：2026-06-22
 - 核心指数状态：VALID
-- 数据源状态：详见 /Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/data_audit/core_market_source_audit.csv
+- 数据源状态：详见 /Users/pan/Desktop/research/0workspace/QuantPilot/s3/output/data_audit/core_market_source_audit.csv
 - 特征覆盖率：1.00000000
 - score_status：valid
 
