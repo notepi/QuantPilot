@@ -56,7 +56,7 @@
 - A股温度计状态：589720.SH S1=0.75，状态为中性；S1最新日期 20260623，综合得分 0.75，等级 符合预期；S1-02=-1.79%，S1-05=60.00%，S1-06=2.27%。
 - s1_structure_quality = normal；s1_breadth_state = normal。
 - S1_score_contribution：flow_score_contribution=0.226；price_strength_contribution=0.200；volume_contribution=0.098；breadth_contribution=0.140；leader_contribution=0.084。
-- S1改善主要来自资金/份额流入，非价格强度和广度扩散。
+- S1改善主要来自价格相对强度、板块广度；但ETF份额变化仍未确认。
 - S2正式量化等级：adjusted_score=0.60，等级为符合预期。
 - S2产业事件侧得分：S2_event_score=0.65，状态为符合预期。
 - S2交易转化侧得分：S2_conversion_score=0.50，状态为交易转化修复中，但未确认。
@@ -120,7 +120,7 @@
 - S1趋势状态：s1_weak_streak_days=0；s1_trend_state=温度计修复；s1_recent_direction=上升 +0.08。
 - s1_structure_quality = normal；s1_breadth_state = normal。
 - S1_score_contribution：flow_score_contribution=0.226；price_strength_contribution=0.200；volume_contribution=0.098；breadth_contribution=0.140；leader_contribution=0.084。
-- S1改善主要来自资金/份额流入，非价格强度和广度扩散。
+- S1改善主要来自价格相对强度、板块广度；但ETF份额变化仍未确认。
 - S1最新日期 20260623，综合得分 0.75，等级 符合预期；S1-02=-1.79%，S1-05=60.00%，S1-06=2.27%。
 
 ### 最近 10 个交易日 S1
@@ -288,7 +288,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | final_data_source | citydata_fund_daily |
 | 159567_audit_final_source | processed |
 | 159567_audit_final_source_reason | processed table has latest symbol row |
-| 159567_audit_fetched_at | 2026-06-23T19:33:42 |
+| 159567_audit_fetched_at | 2026-06-23T19:42:19 |
 | 159567_audit_data_quality | latest_valid |
 | 159567_audit_can_use_for_latest_signal | true |
 | 159567_audit_raw_latest_date | missing |
@@ -296,7 +296,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | 159567_audit_processed_latest_date | 20260623 |
 | 159557_audit_final_source | processed |
 | 159557_audit_final_source_reason | processed table has latest symbol row |
-| 159557_audit_fetched_at | 2026-06-23T19:33:42 |
+| 159557_audit_fetched_at | 2026-06-23T19:42:19 |
 | 159557_audit_data_quality | latest_valid |
 | 159557_audit_can_use_for_latest_signal | true |
 | 159557_audit_raw_latest_date | missing |

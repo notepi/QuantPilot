@@ -376,9 +376,42 @@ def _s1_structure_flags(record: S1Record) -> dict[str, str]:
 
 def _s1_contribution_sentence(record: S1Record) -> str:
     contributions = _s1_score_contribution(record)
-    if contributions["flow_score_contribution"] >= max(contributions.values()):
-        return "S1改善主要来自资金/份额流入，非价格强度和广度扩散。"
-    return "S1贡献来源较分散，仍需拆分资金、价格强度和广度质量。"
+    labels = {
+        "S1-01": "资金回流连续性",
+        "S1-02": "ETF份额变化",
+        "S1-03": "价格相对强度",
+        "S1-04": "量能放大",
+        "S1-05": "板块广度",
+        "S1-06": "龙头先行",
+    }
+    positive = []
+    negative = []
+    for code, label in labels.items():
+        item = record.indicators.get(code, {})
+        expectation = str(item.get("expectation", ""))
+        value = item.get("value")
+        if expectation == "超预期":
+            positive.append(label)
+        elif expectation == "低于预期":
+            negative.append(label)
+        elif code == "S1-02" and value is not None and float(value) < 0:
+            negative.append(label)
+
+    if positive:
+        sentence = "S1改善主要来自" + "、".join(positive[:3])
+    else:
+        leader = max(contributions, key=contributions.get)
+        leader_label = {
+            "flow_score_contribution": "资金回流连续性",
+            "price_strength_contribution": "价格相对强度",
+            "volume_contribution": "量能放大",
+            "breadth_contribution": "板块广度",
+            "leader_contribution": "龙头先行",
+        }.get(leader, "多项指标")
+        sentence = f"S1贡献主要来自{leader_label}"
+    if negative:
+        sentence += "；但" + "、".join(negative[:2]) + "仍未确认"
+    return sentence + "。"
 
 
 def _truthy(value: object) -> bool:

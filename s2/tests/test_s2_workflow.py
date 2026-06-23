@@ -8,10 +8,11 @@ import pytest
 
 from s2.event_store import append_events, ensure_event_store, load_events
 from s2.citydata_client import _frame_from_payload
-from s2.generate_s2_report import _s2_conversion_score, _s2_event_score, generate_report
+from s2.generate_s2_report import _s1_contribution_sentence, _s2_conversion_score, _s2_event_score, generate_report
 from s2.hk_observation import read_hk_observation, update_hk_observation
 from s2.market_metrics import clinical_conversion_rate, event_return
 from s2.s1_reader import load_latest_s1
+from s2.s1_reader import S1Record
 from s2.scoring import S2Item, S2Score, _carry_forward, _expire_carry, score_s2
 import s2.update_market_data as s2_market_update
 
@@ -31,6 +32,29 @@ def s1_payload(trade_date: str, score: float):
             {"code": "S1-02", "name": "ETF份额变化", "value": -0.02, "expectation": "低于预期"},
         ],
     }
+
+
+def test_s1_contribution_sentence_uses_real_indicator_direction():
+    record = S1Record(
+        trade_date="20260623",
+        total_score=0.748,
+        expectation_level="符合预期",
+        indicators={
+            "S1-01": {"value": 0.4167, "weight": 0.22, "expectation": "符合预期"},
+            "S1-02": {"value": -0.0179, "weight": 0.18, "expectation": "低于预期"},
+            "S1-03": {"value": 0.0815, "weight": 0.20, "expectation": "超预期"},
+            "S1-04": {"value": 1.2086, "weight": 0.14, "expectation": "符合预期"},
+            "S1-05": {"value": 0.60, "weight": 0.14, "expectation": "超预期"},
+            "S1-06": {"value": 0.0227, "weight": 0.12, "expectation": "符合预期"},
+        },
+    )
+
+    sentence = _s1_contribution_sentence(record)
+
+    assert "价格相对强度" in sentence
+    assert "板块广度" in sentence
+    assert "ETF份额变化仍未确认" in sentence
+    assert "非价格强度和广度扩散" not in sentence
 
 
 def test_load_latest_s1_reads_recent_records(tmp_path):
