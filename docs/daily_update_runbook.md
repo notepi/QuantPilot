@@ -88,7 +88,7 @@ wb.daily_flow
 -> s2.update_market_data
 -> s2.build_data_layer
 -> s2.generate_s2_report
--> s2.generate_ai_style_report
+-> s3.generate_report
 -> 输出日期复核
 ```
 
