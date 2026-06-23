@@ -52,10 +52,11 @@ uv run python -m s2.daily_report_flow
 4. `s2.generate_s2_report` — 生成 S2 产业验证日报
 5. `s3.generate_report` — 生成 S3 AI 风格日报
 
-完成后必须审计三个报告：
+完成后必须审计四个报告：
 
 ```text
 docs/daily_report.md
+docs/s2_daily_report.md
 s2/output/reports/YYYY-MM-DD.md
 s3/output/ai_style_daily_report.md
 ```
@@ -104,7 +105,8 @@ CITYDATA_TOKEN=xxx
 - docs/file_structure.md - 项目文件目录结构
 - docs/usage.md - 命令使用指南（每日流程、回测、API、界面）
 - docs/indicators.md - 指标定义与阈值（S1-01~S1-06 口径说明）
-- docs/daily_report.md - 指标日报（横轴指标，纵轴日期）
+- docs/daily_report.md - S1 指标日报（横轴指标，纵轴日期）
+- docs/s2_daily_report.md - S2 指标日报（横轴指标，纵轴日期）
 - docs/dashboard_prd.md - 可视化界面PRD（5模块设计）
 - docs/data_governance_plan.md - 数据治理方案（已实施）
 - docs/data_governance_audit.md - 数据治理审计

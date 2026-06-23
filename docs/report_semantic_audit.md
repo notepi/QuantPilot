@@ -148,18 +148,20 @@ f0c3875 fix: S2 report semantic alignment with CLAUDE.md rules
 
 | 文档 | CLAUDE.md 索引 | 当前状态 | 需更新 |
 |------|----------------|---------|--------|
-| `docs/file_structure.md` | ✅ 有 | 仍为旧目录树，缺少 s2/、s3/、wb/indicators/ 等子目录 | ⚠️ 是 |
+| `docs/file_structure.md` | ✅ 有 | 已更新，包含 s2/、s3/、data/processed/、wb/indicators/ 等目录 | 否 |
 | `docs/usage.md` | ✅ 有 | 已更新含 S3 步骤 | 否 |
 | `docs/indicators.md` | ✅ 有 | S1-05 数据源已修为 `daily` | 否 |
 | `docs/daily_report.md` | ✅ 有 | 自动生成，2026-06-23 | 否 |
 | `docs/dashboard_prd.md` | ✅ 有 | 未变 | 否 |
 | `docs/data_governance_plan.md` | ✅ 有 | 已实施 | 否 |
 | `docs/data_governance_audit.md` | ✅ 有 | 7 项复验通过 | 否 |
-| `docs/daily_update_runbook.md` | ✅ 有 | 已含 S3 步骤，但步骤列表仍写 `s2.generate_ai_style_report` | ⚠️ 是 |
+| `docs/daily_update_runbook.md` | ✅ 有 | 已含 S3 步骤，步骤列表为 `s3.generate_report` | 否 |
 | `docs/api.md` | ❌ 索引未列 | 存在但未在 CLAUDE.md 索引 | — |
 | `docs/architecture.md` | ❌ 索引未列 | 存在但仅描述 wb/，缺 s2/s3 | — |
 
-### 需修复项
+### 后续复核结果
 
-1. **`docs/file_structure.md`**：目录树过时，缺少 `s2/`、`s3/`、`data/processed/`、`wb/indicators/base.py` 等
-2. **`docs/daily_update_runbook.md`**：L91 写 `s2.generate_ai_style_report`，应为 `s3.generate_report`
+1. **`docs/file_structure.md`**：已更新，目录树包含 `s2/`、`s3/`、`data/processed/`、`wb/indicators/base.py` 等。
+2. **`docs/daily_update_runbook.md`**：已更新，统一日报入口步骤写为 `s3.generate_report`。
+
+当前无待修复项。

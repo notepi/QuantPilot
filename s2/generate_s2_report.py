@@ -152,6 +152,150 @@ def _ensure_auxiliary_layers(data_dir: Path) -> None:
                 writer.writerow(row)
 
 
+def _s2_emoji(adjusted_score: float, rating: str) -> str:
+    """Return emoji for S2 item based on adjusted_score and rating."""
+    if rating == "数据缺失":
+        return "⚪"
+    if adjusted_score >= 0.80:
+        return "🟢"
+    if adjusted_score >= 0.60:
+        return "🟡"
+    return "🔴"
+
+
+def _s2_level_emoji(level: str) -> str:
+    """Return emoji for S2 total level."""
+    if "超预期" in level:
+        return "🟢"
+    if "符合预期" in level:
+        return "🟡"
+    return "🔴"
+
+
+def _render_s2_summary_table(output_dir: Path, current_s2: S2Score, report_date: str) -> list[str]:
+    """Render a S1-style summary table for S2 indicators.
+
+    Reads historical item scores from s2_item_scores.csv and total scores
+    from s2_scores.csv, then builds a date × indicator table with emojis.
+    """
+    codes = ["S2-01", "S2-02", "S2-03a", "S2-03b", "S2-04", "S2-05"]
+    names = {
+        "S2-01": "BD频率",
+        "S2-02": "BD金额",
+        "S2-03a": "业绩客观",
+        "S2-03b": "一致预期",
+        "S2-04": "催化转化",
+        "S2-05": "龙头接力",
+    }
+
+    # Read historical item scores
+    item_path = output_dir / "s2_item_scores.csv"
+    date_items: dict[str, dict[str, tuple[float, str]]] = {}  # date -> {code: (adjusted_score, rating)}
+    if item_path.exists():
+        with item_path.open(newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                d = row.get("date", "")
+                code = row.get("code", "")
+                if code not in codes or not d:
+                    continue
+                try:
+                    adj = float(row.get("adjusted_score", "0.5"))
+                except (ValueError, TypeError):
+                    adj = 0.5
+                rating = row.get("rating", "数据缺失")
+                date_items.setdefault(d, {})[code] = (adj, rating)
+
+    # Read historical total scores
+    total_path = output_dir / "s2_scores.csv"
+    date_totals: dict[str, tuple[float, str]] = {}  # date -> (adjusted_total, level)
+    if total_path.exists():
+        with total_path.open(newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                d = row.get("date", "")
+                if not d:
+                    continue
+                try:
+                    total = float(row.get("s2_adjusted_total", "0"))
+                except (ValueError, TypeError):
+                    total = 0.0
+                level = row.get("formal_rating", "低于预期")
+                date_totals[d] = (total, level)
+
+    # Sort dates descending, take last 20
+    sorted_dates = sorted(date_items.keys(), reverse=True)[:20]
+
+    if not sorted_dates:
+        return []
+
+    lines = [
+        "## S2 指标数值",
+        "",
+        "| 日期 | S2-01 | S2-02 | S2-03a | S2-03b | S2-04 | S2-05 | S2综合 | 等级 |",
+        "|------|-------|-------|--------|--------|-------|-------|--------|------|",
+    ]
+    for d in sorted_dates:
+        items = date_items.get(d, {})
+        cells = []
+        for code in codes:
+            if code in items:
+                adj, rating = items[code]
+                emoji = _s2_emoji(adj, rating)
+                cells.append(f"{adj:.2f} {emoji}")
+            else:
+                cells.append("-")
+        # Total
+        total_str = "-"
+        level_str = "-"
+        if d in date_totals:
+            total, level = date_totals[d]
+            emoji = _s2_level_emoji(level)
+            total_str = f"{total:.2f}"
+            level_str = f"{emoji} {level}"
+        # Format date
+        display_date = f"{d[:4]}-{d[5:7]}-{d[8:10]}" if len(d) == 10 and "-" in d else d
+        lines.append(f"| {display_date} | {' | '.join(cells)} | {total_str} | {level_str} |")
+
+    lines.extend([
+        "",
+        "**图例**: 🟢 超预期 (≥0.80) | 🟡 符合预期 (0.60-0.80) | 🔴 低于预期 (<0.60) | ⚪ 数据缺失",
+        "",
+    ])
+
+    # Add indicator description table
+    lines.extend([
+        "## S2 指标说明",
+        "",
+        "| 指标 | 名称 | 权重 | 说明 |",
+        "|------|------|------|------|",
+        "| S2-01 | BD落地频率 | 20% | 近90日重大BD笔数 / 历史90日窗口均值，≥1.5x超预期 |",
+        "| S2-02 | BD金额质量 | 20% | 近90日BD首付款+近期里程碑 / 去年同期，≥150%超预期 |",
+        "| S2-03a | 财报客观改善 | 10% | 同比/利润/亏损收窄等客观改善，≥60%超预期 |",
+        "| S2-03b | 一致预期验证 | 10% | 具一致预期来源的业绩beat占比，≥60%超预期 |",
+        "| S2-04 | 数据催化转化率 | 20% | 临床事件后5日标的跑赢基准的比例，≥60%超预期 |",
+        "| S2-05 | 龙头接力强度 | 20% | 核心催化后5日A股龙头池相对589720超额中位数，≥5%超预期 |",
+        "",
+    ])
+
+    return lines
+
+
+def _write_docs_s2_summary(s1: S1Record, s2: S2Score, output_dir: Path, report_date: str) -> None:
+    """Write a lightweight S2 summary table to docs/s2_daily_report.md."""
+    table_lines = _render_s2_summary_table(output_dir, s2, report_date)
+    if not table_lines:
+        return
+    display_date = f"{report_date[:4]}-{report_date[5:7]}-{report_date[8:10]}" if len(report_date) == 10 and "-" in report_date else report_date
+    content = "\n".join([
+        "# 创新药 S2 产业验证 - 指标日报",
+        "",
+        f"**标的**: 159567.SZ | **更新时间**: {display_date}",
+        f"**S2综合得分**: {s2.adjusted_score:.2f} | **等级**: {s2.level}",
+        "",
+        *table_lines,
+    ])
+    (PROJECT_ROOT / "docs" / "s2_daily_report.md").write_text(content, encoding="utf-8")
+
+
 def _fmt(value: float | None, percent: bool = False, money: bool = False) -> str:
     if value is None:
         return "数据缺失"
@@ -1782,6 +1926,7 @@ def render_report(
         "**口径边界**: 589720.SH 弱，只表示 A 股科创创新药资金状态偏弱；159567.SZ 是否强，需要单独读取 HK_observation。",
         "**外部风格分析**: AI/科技成长风格观察请参见 `ai_style_daily_report.md`；不进入 S2 正式评分。",
         "",
+        *_render_s2_summary_table(output_dir, s2, report_date),
         "## 一、今日结论",
         "",
         "- 港股观察标的：159567.SZ 港股创新药ETF。",
@@ -2329,6 +2474,8 @@ def generate_report(
     report_path = reports_dir / f"{report_date}.md"
     report_path.write_text(content, encoding="utf-8")
     (output_dir / "s2_daily_report.md").write_text(content, encoding="utf-8")
+    # Lightweight summary table for docs/ (parallel to docs/daily_report.md)
+    _write_docs_s2_summary(latest_s1, s2, output_dir, report_date)
     brief = _render_daily_brief(latest_s1, s2, output_dir, report_date, hk_observation, hk_update_status)
     briefs_dir = output_dir / "briefs"
     briefs_dir.mkdir(parents=True, exist_ok=True)
