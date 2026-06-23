@@ -554,11 +554,40 @@ def _hk_proxy_summary(observation: dict[str, object]) -> str:
 
 
 def _s1_update_line(output_dir: Path) -> str:
-    path = output_dir / "s1_update_status.json"
+    # Do not trust the historical status file alone. It is display metadata and
+    # can lag behind the actual S1 indicator JSON after a manual rerun.
+    try:
+        latest_s1, _ = load_latest_s1(DEFAULT_INDICATORS_DIR)
+    except Exception:  # noqa: BLE001 - report should disclose missing S1 state
+        return "S1更新状态：无法读取最新S1指标文件。"
+
+    fund_daily_latest = _latest_raw_trade_date("fund_daily.csv", "589720.SH")
+    fund_share_latest = _latest_raw_trade_date("fund_share.csv", "589720.SH")
+    parts = [
+        f"S1指标已更新到 {latest_s1.trade_date}",
+        f"本地 589720.SH 行情最新交易日为 {fund_daily_latest or 'missing'}",
+        f"fund_share 最新披露日为 {fund_share_latest or 'missing'}",
+    ]
+
+    return "S1更新状态：" + "；".join(parts) + "。"
+
+
+def _latest_raw_trade_date(filename: str, ts_code: str | None = None) -> str:
+    path = DEFAULT_MARKET_DATA_DIR / filename
     if not path.exists():
-        return "S1更新状态：本次运行状态未记录。"
-    status = json.loads(path.read_text(encoding="utf-8"))
-    return f"S1更新状态：{status.get('message', '状态说明缺失')}"
+        return ""
+    try:
+        rows = list(csv.DictReader(path.open(newline="", encoding="utf-8")))
+    except OSError:
+        return ""
+    dates = []
+    for row in rows:
+        if ts_code and row.get("ts_code") != ts_code:
+            continue
+        trade_date = str(row.get("trade_date") or "").strip()
+        if trade_date:
+            dates.append(trade_date)
+    return max(dates) if dates else ""
 
 
 def _combination_observation(s1: S1Record, s2: S2Score) -> str:

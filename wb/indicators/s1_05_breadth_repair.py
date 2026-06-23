@@ -48,7 +48,7 @@ class S1_05BreadthRepair(BaseIndicator):
         holdings = self.data_fetcher.get_fund_portfolio(ts_code=self.ETF_CODE)
 
         if holdings is None or len(holdings) == 0:
-            return self.create_result(0.0, trade_date=end_date)
+            return self.create_result(0.0, trade_date=end_date, data_date="")
 
         # 取最新报告期
         latest_period = holdings["end_date"].max()
@@ -65,7 +65,7 @@ class S1_05BreadthRepair(BaseIndicator):
         )
 
         if df_all is None or len(df_all) == 0:
-            return self.create_result(0.0, trade_date=end_date, raw_data={
+            return self.create_result(0.0, trade_date=end_date, data_date="", raw_data={
                 "reason": "A股数据获取失败",
                 "report_period": latest_period,
             })
@@ -104,9 +104,13 @@ class S1_05BreadthRepair(BaseIndicator):
         # 计算占比
         ratio = stocks_above_ma / total_stocks if total_stocks > 0 else 0.0
 
+        # 获取实际数据最新日期
+        actual_data_date = str(df_all["trade_date"].max()) if "trade_date" in df_all.columns else ""
+
         return self.create_result(
             value=ratio,
             trade_date=end_date,
+            data_date=actual_data_date,
             raw_data={
                 "stocks_above_ma": stocks_above_ma,
                 "total_stocks": total_stocks,

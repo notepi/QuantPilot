@@ -69,6 +69,7 @@ class S1_06LeaderStrength(BaseIndicator):
 
         if df_all is None or len(df_all) == 0:
             # 数据获取失败
+            daily_data_date = ""
             for code in self.LEADER_STOCKS:
                 leader_returns.append(0.0)
                 leader_details.append({
@@ -78,6 +79,7 @@ class S1_06LeaderStrength(BaseIndicator):
                 })
         else:
             # 按股票分组计算收益
+            daily_data_date = str(df_all["trade_date"].max()) if "trade_date" in df_all.columns else ""
             for code in self.LEADER_STOCKS:
                 stock_df = df_all[df_all["ts_code"] == code].sort_values("trade_date")
 
@@ -112,9 +114,15 @@ class S1_06LeaderStrength(BaseIndicator):
 
         if etf_df is None or len(etf_df) < 2:
             etf_return = 0.0
+            etf_data_date = ""
         else:
             etf_df = etf_df.sort_values("trade_date")
             etf_return = self._calc_return(etf_df["close"])
+            etf_data_date = str(etf_df["trade_date"].max())
+
+        # 取最保守的数据日期
+        data_dates = [d for d in [daily_data_date, etf_data_date] if d]
+        actual_data_date = min(data_dates) if data_dates else ""
 
         # 3. 计算龙头先行强度
         leader_strength = weighted_return - etf_return
@@ -122,6 +130,7 @@ class S1_06LeaderStrength(BaseIndicator):
         return self.create_result(
             value=leader_strength,
             trade_date=end_date,
+            data_date=actual_data_date,
             raw_data={
                 "leader_weighted_return": weighted_return,
                 "etf_return": etf_return,

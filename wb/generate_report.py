@@ -70,6 +70,7 @@ def generate_report() -> str:
         record["预期等级"] = data["expectation_level"]
 
         # 检查数据日期是否一致
+        # 用 min 取最保守（最滞后）的数据日期，反映数据时效性下限
         data_dates = set()
         for ind in data["indicator_results"]:
             if ind.get("data_date"):
@@ -77,7 +78,7 @@ def generate_report() -> str:
         if data_dates and len(data_dates) == 1:
             record["数据日期"] = data_dates.pop()
         elif data_dates:
-            record["数据日期"] = max(data_dates)  # 取最滞后的日期
+            record["数据日期"] = min(data_dates)  # 取最保守（最早/最滞后）的数据日期
         else:
             record["数据日期"] = ""
 

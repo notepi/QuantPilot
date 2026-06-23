@@ -183,12 +183,15 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     frames = []
 
     # 1. 主源：citydata（历史数据）
-    df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
-    if df is not None and len(df) > 0 and "trade_date" in df.columns:
-        df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
-        frames.append(df)
-    elif df is not None and len(df) > 0:
-        print(f"  {ts_code}: fund_share返回缺少trade_date，尝试备用源；columns={list(df.columns)}")
+    try:
+        df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        if df is not None and len(df) > 0 and "trade_date" in df.columns:
+            df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
+            frames.append(df)
+        elif df is not None and len(df) > 0:
+            print(f"  {ts_code}: fund_share返回缺少trade_date，尝试备用源；columns={list(df.columns)}")
+    except Exception as e:
+        print(f"  {ts_code}: citydata fund_share主源异常: {e}，将尝试备用源")
 
     # 2. 检查是否需要补充当天数据（东方财富备用源）
     combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()

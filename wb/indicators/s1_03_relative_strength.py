@@ -59,21 +59,30 @@ class S1_03RelativeStrength(BaseIndicator):
 
         if etf_df is None or len(etf_df) < 2:
             etf_return = 0.0
+            etf_data_date = ""
         else:
             etf_df = etf_df.sort_values("trade_date")
             etf_return = self._calc_return(etf_df["close"])
+            etf_data_date = str(etf_df["trade_date"].max())
 
         if benchmark_df is None or len(benchmark_df) < 2:
             benchmark_return = 0.0
+            benchmark_data_date = ""
         else:
             benchmark_df = benchmark_df.sort_values("trade_date")
             benchmark_return = self._calc_return(benchmark_df["close"])
+            benchmark_data_date = str(benchmark_df["trade_date"].max())
+
+        # 取最保守（最早）的数据日期
+        data_dates = [d for d in [etf_data_date, benchmark_data_date] if d]
+        actual_data_date = min(data_dates) if data_dates else ""
 
         relative_strength = etf_return - benchmark_return
 
         return self.create_result(
             value=relative_strength,
             trade_date=end_date,
+            data_date=actual_data_date,
             raw_data={
                 "etf_return": etf_return,
                 "benchmark_return": benchmark_return,
