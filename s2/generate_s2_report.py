@@ -160,8 +160,14 @@ def _fmt(value: float | None, percent: bool = False, money: bool = False) -> str
     return f"{value:.2%}" if percent else f"{value:.2f}"
 
 
-def _cell(value: object) -> str:
-    return str(value if value not in {None, ""} else "missing").replace("|", "\\|")
+def _cell(value: object, *, empty_as: str = "missing") -> str:
+    """Format a table cell.  By default None/'' → 'missing' (real data absence).
+
+    Pass ``empty_as='-'`` for padding cells where no entry exists (e.g. the
+    positive/negative/risk factor summary table) — ``missing`` must only mean
+    actual data absence per CLAUDE.md.
+    """
+    return str(value if value not in {None, ""} else empty_as).replace("|", "\\|")
 
 
 def _csv_float(value: float | None) -> str:
@@ -1745,7 +1751,13 @@ def render_report(
     negative_factors = [item for item in _main_negative_factors(s1, s2, hk_observation).split("；") if item]
     s105 = s1.indicators.get("S1-05", {}).get("value")
     if s105 is not None:
-        negative_factors.append(f"S1-05={_fmt(float(s105), True)}，{s1_flags['s1_breadth_state']}")
+        s105_val = float(s105)
+        s105_text = f"S1-05={_fmt(s105_val, True)}，{s1_flags['s1_breadth_state']}"
+        # S1-05 ≥ 0.60 (60%) = 超预期 → 正面；否则归负面
+        if s105_val >= 0.60:
+            positive_factors.append(s105_text)
+        else:
+            negative_factors.append(s105_text)
     negative_factors.append(f"S2-04 success_rate={_fmt(clinical.success_rate, True)}")
     negative_factors.append(f"S2_conversion_score={_s2_conversion_score(s2):.2f}，修复但未确认")
     if policy_state["state"] == "政策风险升高":
@@ -1803,7 +1815,7 @@ def render_report(
         "| 正面确认 | 负面确认 | 数据风险/不可确认 |",
         "| --- | --- | --- |",
         *[
-            f"| {_cell(positive_factors[i] if i < len(positive_factors) else '')} | {_cell(negative_factors[i] if i < len(negative_factors) else '')} | {_cell(data_risk_factors[i] if i < len(data_risk_factors) else '')} |"
+            f"| {_cell(positive_factors[i] if i < len(positive_factors) else '', empty_as='-')} | {_cell(negative_factors[i] if i < len(negative_factors) else '', empty_as='-')} | {_cell(data_risk_factors[i] if i < len(data_risk_factors) else '', empty_as='-')} |"
             for i in range(factor_rows)
         ],
         "",
