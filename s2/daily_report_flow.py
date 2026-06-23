@@ -20,6 +20,7 @@ from s2.s1_reader import load_latest_s1
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INDICATORS_DIR = PROJECT_ROOT / "data" / "indicators"
 S2_OUTPUT_DIR = PROJECT_ROOT / "s2" / "output"
+S3_OUTPUT_DIR = PROJECT_ROOT / "s3" / "output"
 
 
 @dataclass(frozen=True)
@@ -62,11 +63,11 @@ def _validate_outputs() -> None:
     latest_s1, _ = load_latest_s1(INDICATORS_DIR)
     report_date = f"{latest_s1.trade_date[:4]}-{latest_s1.trade_date[4:6]}-{latest_s1.trade_date[6:]}"
     s2_report = S2_OUTPUT_DIR / "reports" / f"{report_date}.md"
-    ai_report = S2_OUTPUT_DIR / "ai_style_daily_report.md"
+    s3_report = S3_OUTPUT_DIR / "ai_style_daily_report.md"
     if not s2_report.exists():
         raise SystemExit(f"S2报告缺失: {s2_report}")
-    if not ai_report.exists():
-        raise SystemExit(f"AI风格报告缺失: {ai_report}")
+    if not s3_report.exists():
+        raise SystemExit(f"S3 AI风格报告缺失: {s3_report}")
 
     s2_text = s2_report.read_text(encoding="utf-8")
     if f"**报告日期**: {report_date}" not in s2_text:
@@ -79,7 +80,7 @@ def _validate_outputs() -> None:
     print(f"- S2 report: {s2_report}")
     print(f"- HK cache 159567 latest: {_latest_cache_date('159567') or 'missing'}")
     print(f"- HK cache 159557 latest: {_latest_cache_date('159557') or 'missing'}")
-    print(f"- AI style report: {ai_report}")
+    print(f"- S3 report: {s3_report}")
 
 
 def main() -> None:
