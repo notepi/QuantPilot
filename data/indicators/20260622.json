@@ -18,7 +18,7 @@
     {
       "code": "S1-02",
       "name": "ETF份额变化",
-      "value": -0.035337385527205965,
+      "value": -0.03533890005149382,
       "weight": 0.18,
       "unit": "pct",
       "direction": "higher_better",
@@ -34,7 +34,8 @@
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "超预期",
-      "trade_date": "20260622"
+      "trade_date": "20260622",
+      "data_date": "20260622"
     },
     {
       "code": "S1-04",
@@ -44,7 +45,8 @@
       "unit": "ratio",
       "direction": "higher_better",
       "expectation": "低于预期",
-      "trade_date": "20260622"
+      "trade_date": "20260622",
+      "data_date": "20260622"
     },
     {
       "code": "S1-05",
@@ -54,7 +56,8 @@
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "符合预期",
-      "trade_date": "20260622"
+      "trade_date": "20260622",
+      "data_date": "20260622"
     },
     {
       "code": "S1-06",
@@ -64,7 +67,8 @@
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "符合预期",
-      "trade_date": "20260622"
+      "trade_date": "20260622",
+      "data_date": "20260622"
     }
   ],
   "summary": "综合得分 0.66，整体表现符合预期。6项指标中：超预期1项，符合预期3项，低于预期2项。主要特征：ETF份额变化需关注、ETF相对强度表现突出、成交放大持续性需关注。"
