@@ -69,6 +69,7 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
     right_side = _latest_csv_row(output_dir / "ai_biotech_right_side_score.csv")
     windows = _window_rows(output_dir / "ai_biotech_window_stats.csv")
     lead = _best_lead_row(output_dir / "ai_biotech_a_lead_stats.csv")
+    source_audit_path = _source_audit_path(output_dir)
     hint = _context_action_hint(validation, right_side)
     ai_env = _environment_from_relative(validation.strongest_opposition, "AI_CORE")
     tech_env = _environment_from_relative(validation.strongest_opposition, "TECH_GROWTH_CORE")
@@ -80,7 +81,9 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
         "",
         f"- 报告日期：{validation.report_date}",
         f"- 核心指数状态：{validation.core_index_status}",
-        f"- 数据源状态：详见 {output_dir / 'data_audit' / 'core_market_source_audit.csv'}",
+        f"- A股/港股数据日期：{validation.a_share_date}",
+        f"- 对应美股收盘日期：{validation.us_close_date}（跨市场时区，使用上一美股交易日数据）",
+        f"- 数据源状态：详见 {source_audit_path}",
         f"- 特征覆盖率：{right_side.get('feature_coverage', validation.feature_coverage)}",
         f"- score_status：{right_side.get('score_status', validation.score_status)}",
         "",
@@ -89,9 +92,9 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
         f"- ai_environment: {ai_env}",
         f"- tech_growth_environment: {tech_env}",
         f"- 市场风险状态：{validation.market_state}",
-        f"- biotech_vs_health: {_extract_evidence_value(validation.strongest_support, '159567当日跑赢159557') or 'missing'}",
-        f"- biotech_vs_ai: {_extract_evidence_value(validation.strongest_opposition, 'AI_CORE上涨时159567跑输AI_CORE') or 'missing'}",
-        f"- biotech_vs_tech: {_extract_evidence_value(validation.strongest_opposition, '科技成长上涨时159567跑输TECH_GROWTH_CORE') or 'missing'}",
+        f"- biotech_vs_health: {_biotech_vs_health_text(validation)}",
+        f"- biotech_vs_ai: {_extract_evidence_value(validation.strongest_opposition, 'AI_CORE上涨时159567跑输AI_CORE') or _extract_evidence_value(validation.strongest_support, 'AI_CORE上涨时159567跑赢AI_CORE') or '未确认'}",
+        f"- biotech_vs_tech: {_extract_evidence_value(validation.strongest_opposition, '科技成长上涨时159567跑输TECH_GROWTH_CORE') or _extract_evidence_value(validation.strongest_support, '科技成长上涨时159567跑赢TECH_GROWTH_CORE') or '未确认'}",
         "",
         "## 3. 当前轮动判断",
         "",
@@ -142,6 +145,13 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
         "",
     ]
     return "\n".join(lines)
+
+
+def _source_audit_path(output_dir: Path) -> Path:
+    local_path = output_dir / "data_audit" / "core_market_source_audit.csv"
+    if local_path.exists():
+        return local_path
+    return PROJECT_ROOT / "s2" / "output" / "data_audit" / "core_market_source_audit.csv"
 
 
 def _latest_csv_row(path: Path) -> dict[str, str]:
@@ -228,6 +238,17 @@ def _extract_evidence_value(items: list[str], prefix: str) -> str:
         if prefix in item:
             return item
     return ""
+
+
+def _biotech_vs_health_text(validation: ValidationResult) -> str:
+    """从支持和反对证据中提取 159567 vs 159557 关系，区分跑赢/跑输/未确认。"""
+    support_hit = _extract_evidence_value(validation.strongest_support, '159567当日跑赢159557')
+    if support_hit:
+        return support_hit
+    oppose_hit = _extract_evidence_value(validation.strongest_opposition, '159567跑输159557')
+    if oppose_hit:
+        return oppose_hit
+    return "未确认"
 
 
 def main() -> None:

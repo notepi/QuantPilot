@@ -617,7 +617,9 @@ def _trading_conversion_status(s2: S2Score) -> str:
     suffix = ""
     if clinical.deduped_trade_sample_count >= 3 and clinical.success_rate == 0:
         suffix = "样本数量满足，但交易转化失败。"
-    return f"S2-04 去重正式交易样本 {clinical.sample_count} 个，raw成熟事件 {clinical.raw_mature_event_count} 个，success_rate={_fmt(clinical.success_rate, True)}，评级 {clinical.rating}；S2-05 评级 {leader.rating}。{suffix}"
+    clinical_rating_part = f"历史观测 success_rate={_fmt(clinical.success_rate, True)}，当前不再沿用，正式评级={clinical.rating}" if clinical.rating == "数据缺失" and clinical.sample_count > 0 else f"success_rate={_fmt(clinical.success_rate, True)}，评级 {clinical.rating}"
+    leader_rating_part = f"历史观测，当前不再沿用，正式评级={leader.rating}" if leader.rating == "数据缺失" and leader.sample_count > 0 else f"评级 {leader.rating}"
+    return f"S2-04 去重正式交易样本 {clinical.sample_count} 个，raw成熟事件 {clinical.raw_mature_event_count} 个，{clinical_rating_part}；S2-05 {leader_rating_part}。{suffix}"
 
 
 def _s2_event_score(s2: S2Score) -> float:

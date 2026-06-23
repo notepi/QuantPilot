@@ -4,6 +4,8 @@
 
 - 报告日期：2026-06-23
 - 核心指数状态：VALID
+- A股/港股数据日期：20260623
+- 对应美股收盘日期：20260622（跨市场时区，使用上一美股交易日数据）
 - 数据源状态：详见 /Users/pan/Desktop/research/0workspace/QuantPilot/s2/output/data_audit/core_market_source_audit.csv
 - 特征覆盖率：1.00000000
 - score_status：valid
@@ -13,9 +15,9 @@
 - ai_environment: HEADWIND
 - tech_growth_environment: NEUTRAL
 - 市场风险状态：NEUTRAL
-- biotech_vs_health: missing
+- biotech_vs_health: 159567跑输159557 -0.34%
 - biotech_vs_ai: AI_CORE上涨时159567跑输AI_CORE -1.26%
-- biotech_vs_tech: missing
+- biotech_vs_tech: 未确认
 
 ## 3. 当前轮动判断
 
