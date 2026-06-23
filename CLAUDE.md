@@ -22,6 +22,37 @@
 
 见 [docs/usage.md](docs/usage.md)
 
+### 每日流程
+
+**收盘后执行**（确保份额数据对齐）：
+
+```bash
+uv run python -m s2.daily_report_flow
+```
+
+按顺序执行 5 步，最后自动校验 S1/S2/S3 日期对齐：
+
+1. `wb.daily_flow` — 更新 S1 数据、计算指标、生成 S1 日报
+2. `s2.update_market_data` — 刷新港股 ETF 缓存
+3. `s2.build_data_layer` — 构建 S2 行情/宏观/审计数据层
+4. `s2.generate_s2_report` — 生成 S2 产业验证日报
+5. `s3.generate_report` — 生成 S3 AI 风格日报
+
+**只跑 S1（快）**：
+
+```bash
+uv run python -m wb.daily_flow
+```
+
+### 数据对齐规则
+
+| 规则 | 说明 |
+|------|------|
+| 收盘后跑 | 东方财富份额是实时的，必须当天收盘后跑才能拿到当天份额，否则 data_date 会滞后 |
+| 份额滞后时诚实标注 | S1-01/S1-02 的 `data_date` 反映实际数据日期，滞后时日报显示⚠️警告 |
+| fund_share.csv 含 source 字段 | `citydata_fund_share` = 历史数据，`eastmoney_fund_etf_spot_em` = 当天补充 |
+| 159567.SZ 已纳入 raw 更新 | `update_fund_daily_incremental()` 包含 589720/159557/159567 三只标的 |
+
 ## 数据接口
 
 统一使用 citydata 代理，配置 `.env`:
