@@ -1,6 +1,6 @@
 # S2 数据质量报告
 
-**生成时间**: 2026-06-22T19:19:26
+**生成时间**: 2026-06-23T18:11:37
 
 ## 数据分工
 
@@ -11,18 +11,18 @@
 ## 行情审计
 
 - audited_symbols=31
-- can_use_for_latest_signal=false：0
+- can_use_for_latest_signal=false：1
 - unstable_source：0
-- blocked_symbols：none
+- blocked_symbols：688266.SH
 - unstable_symbols：none
 
 ## 表级质量
 
 | 文件 | 行数 | missing_ratio | source_status分布 | fetched_at覆盖率 |
 | --- | ---: | ---: | --- | ---: |
-| data/processed/market_daily.csv | 14942 | 7.45% | success:14942 | 100.00% |
-| data/processed/macro_market_daily.csv | 5012 | 8.61% | failed:1；success:5011 | 100.00% |
-| s2/output/data_audit/market_data_audit.csv | 31 | 26.93% | missing:31 | 100.00% |
+| data/processed/market_daily.csv | 14463 | 7.53% | success:14463 | 100.00% |
+| data/processed/macro_market_daily.csv | 5003 | 8.61% | failed:1；success:5002 | 100.00% |
+| s2/output/data_audit/market_data_audit.csv | 31 | 27.49% | missing:31 | 96.77% |
 | s2/data/clinical_trade_returns.csv | 10 | 1.05% | missing:10 | 0.00% |
 | data/processed/company_financials.csv | 6 | 51.85% | present_not_reverified:6 | 0.00% |
 | data/processed/bd_events.csv | 16 | 13.72% | present_not_reverified:16 | 0.00% |
