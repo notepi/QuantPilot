@@ -54,12 +54,12 @@ uv run python -m s2.daily_report_flow
 
 完成后必须审计四个报告：
 
-```text
-docs/daily_report.md
-docs/s2_daily_report.md
-s2/output/reports/YYYY-MM-DD.md
-s3/output/ai_style_daily_report.md
-```
+| # | 报告 | 路径 | 内容 |
+|---|------|------|------|
+| 1 | S1 指标日报 | `docs/daily_report.md` | 日期×S1-01~S1-06 表，综合得分，预期等级，data_date |
+| 2 | S2 指标日报 | `docs/s2_daily_report.md` | 日期×S2-01~S2-05 表，S2综合，等级，指标说明 |
+| 3 | S2 产业验证详报 | `s2/output/reports/YYYY-MM-DD.md` | S2 指标数值 + 今日结论 + 正负因素 + 事件库 + HK观察 + 政策风险 |
+| 4 | S3 AI风格日报 | `s3/output/ai_style_daily_report.md` | AI/科技成长环境，轮动判断，多窗口，观察评分，结论 |
 
 检查报告日期、S1 交易日、`data_date`、`fund_share 最新披露日`、`latest_date_159567/latest_date_159557/common_trade_date`、S3 数据源 audit 链接是否对齐。`missing` 只能表示真实缺失，不能用来表示跑输或负面信号。
 

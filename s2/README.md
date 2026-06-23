@@ -50,7 +50,7 @@ wb.daily_flow
   -> s2.update_market_data
   -> s2.build_data_layer
   -> s2.generate_s2_report
-  -> s2.generate_ai_style_report
+  -> s3.generate_report
   -> 输出日期复核
 ```
 
@@ -73,7 +73,7 @@ wb.daily_flow
 ./.venv/bin/python -m s2.generate_s2_report
 
 # 5. 生成独立 AI/科技成长风格日报
-./.venv/bin/python -m s2.generate_ai_style_report
+./.venv/bin/python -m s3.generate_report
 ```
 
 只运行 `s2.generate_s2_report` 不会刷新行情、不会刷新 HK_observation，也不会
@@ -553,6 +553,7 @@ Macro_Risk_Layer 不进入 S2 正式分，只解释交易转化强弱。
 | --- | --- |
 | `s2/output/reports/YYYY-MM-DD.md` | 当日 S2 日报归档 |
 | `s2/output/s2_daily_report.md` | 最新 S2 日报镜像 |
+| `docs/s2_daily_report.md` | S2 指标日报（日期×S2-01~S2-05 表，轻量版） |
 | `s2/output/briefs/YYYY-MM-DD.md` | 当日 S2 简报归档 |
 | `s2/output/s2_daily_brief.md` | 最新 S2 简报镜像 |
 | `s2/output/s2_scores.csv` | S2 总分历史 |
