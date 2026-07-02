@@ -4,8 +4,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from s3.validation import _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
-from s3.generate_report import generate_ai_style_report
+from s3.validation import ValidationResult, _a_share_lead_stats, _right_side_score, _versions_by_id, _weighted_core, run_ai_biotech_validation
+from s3.generate_report import generate_ai_style_report, render_ai_style_report
+from s3.style_rotation import StyleAnalysis
 
 
 def _write_config(path: Path) -> None:
@@ -406,3 +407,79 @@ def test_ai_style_report_generates_independently_without_formal_position_action(
     assert "正式position_action" not in text
     assert "建议：reduce" not in text
     assert "建议：increase" not in text
+
+
+def test_ai_style_report_uses_structured_relative_values_even_when_not_evidence(tmp_path):
+    output = tmp_path / "output"
+    output.mkdir()
+    pd.DataFrame([{
+        "right_side_score": "51.61",
+        "score_status": "descriptive_only",
+        "feature_coverage": "1.00000000",
+    }]).to_csv(output / "ai_biotech_right_side_score.csv", index=False)
+    pd.DataFrame([{
+        "window": "20",
+        "metric": "159567相对AI_CORE超额",
+        "mean": "0.01",
+        "trading_meaning": "实际交易意义不足",
+    }]).to_csv(output / "ai_biotech_window_stats.csv", index=False)
+    pd.DataFrame([{
+        "condition_type": "a_share_lead_signal",
+        "condition": "589720_positive_signal",
+        "horizon_days": "1",
+        "sample_count": "10",
+        "bio_vs_health_win_rate": "0.50",
+    }]).to_csv(output / "ai_biotech_a_lead_stats.csv", index=False)
+
+    style = StyleAnalysis(
+        report_date="2026-06-24",
+        module="TECH_GROWTH_BIOTECH_ROTATION",
+        bio_symbol="159567.SZ",
+        ai_core_symbol="AI_CORE",
+        health_symbol="159557.SZ",
+        style_score=0.5,
+        style_level="neutral",
+        style_regime="same_day_strength",
+        data_status="valid",
+        missing_reason="",
+        total_weight_industry=0.75,
+        total_weight_style=0.25,
+    )
+    validation = ValidationResult(
+        report_date="2026-06-24",
+        a_share_date="20260624",
+        hk_date="20260624",
+        us_close_date="20260623",
+        ai_core_date="20260623",
+        ai_core_version="AI_GLOBAL_TEST",
+        tech_growth_core_date="20260624",
+        tech_growth_core_version="TECH_GROWTH_CORE_TEST",
+        sample_count=120,
+        current_ai_state="AI_SINGLE_DOWN",
+        current_tech_growth_state="TECH_UP",
+        market_state="RISK_ON",
+        bio_return=0.0275,
+        health_return=0.0292,
+        ai_core_return=-0.0108,
+        tech_growth_core_return=0.0361,
+        bio_vs_health=-0.0017,
+        bio_vs_ai=0.0383,
+        bio_vs_tech=-0.0086,
+        right_side_score=51.61,
+        right_side_level="初步右侧",
+        score_confidence="high",
+        score_status="descriptive_only",
+        feature_coverage="1.00000000",
+        core_index_status="VALID",
+        thesis_state="unchanged",
+        position_action="hold",
+        strongest_support=["159567当日绝对上涨 2.75%"],
+        strongest_opposition=["159567跑输159557 -0.17%", "159567量能低于20日均值，ratio=0.94"],
+        report_path=str(output / "ai_biotech_validation_report.md"),
+        audit_path=str(output / "ai_biotech_audit_report.md"),
+    )
+
+    text = render_ai_style_report(style, validation, output)
+
+    assert "biotech_vs_ai: 159567跑赢AI_CORE 3.83%" in text
+    assert "biotech_vs_ai: 未确认" not in text

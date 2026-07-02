@@ -92,9 +92,9 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
         f"- ai_environment: {ai_env}",
         f"- tech_growth_environment: {tech_env}",
         f"- 市场风险状态：{validation.market_state}",
-        f"- biotech_vs_health: {_biotech_vs_health_text(validation)}",
-        f"- biotech_vs_ai: {_extract_evidence_value(validation.strongest_opposition, 'AI_CORE上涨时159567跑输AI_CORE') or _extract_evidence_value(validation.strongest_support, 'AI_CORE上涨时159567跑赢AI_CORE') or '未确认'}",
-        f"- biotech_vs_tech: {_extract_evidence_value(validation.strongest_opposition, '科技成长上涨时159567跑输TECH_GROWTH_CORE') or _extract_evidence_value(validation.strongest_support, '科技成长上涨时159567跑赢TECH_GROWTH_CORE') or '未确认'}",
+        f"- biotech_vs_health: {_relative_text(validation.bio_vs_health, '159567跑赢159557', '159567跑输159557')}",
+        f"- biotech_vs_ai: {_relative_text(validation.bio_vs_ai, '159567跑赢AI_CORE', '159567跑输AI_CORE')}",
+        f"- biotech_vs_tech: {_relative_text(validation.bio_vs_tech, '159567跑赢TECH_GROWTH_CORE', '159567跑输TECH_GROWTH_CORE')}",
         "",
         "## 3. 当前轮动判断",
         "",
@@ -138,7 +138,7 @@ def render_ai_style_report(style: StyleAnalysis, validation: ValidationResult, o
         "",
         f"- AI是否仍占优：{'是' if ai_env == 'HEADWIND' else '未确认'}",
         f"- 科技成长是否仍占优：{'是' if tech_env == 'HEADWIND' else '未确认'}",
-        f"- 创新药是否相对医疗改善：{'是' if any('跑赢159557' in item for item in validation.strongest_support) else '未确认'}",
+        f"- 创新药是否相对医疗改善：{'是' if validation.bio_vs_health is not None and validation.bio_vs_health > 0 else '未确认'}",
         "- 创新药是否接棒AI：未确认。",
         f"- 当前是否具备加仓环境：{'否' if hint in {'DO_NOT_ADD', 'RISK_WARNING', 'INSUFFICIENT_DATA'} else '仅允许复核'}",
         "- 未满足条件：AI/科技成长相对超额、S2交易转化、lead_signal稳定性仍需继续验证。",
@@ -233,22 +233,18 @@ def _rotation_status(validation: ValidationResult) -> str:
     return "NEUTRAL"
 
 
-def _extract_evidence_value(items: list[str], prefix: str) -> str:
-    for item in items:
-        if prefix in item:
-            return item
-    return ""
+def _relative_text(value: float | None, positive_label: str, negative_label: str) -> str:
+    if value is None:
+        return "未确认"
+    if value > 0:
+        return f"{positive_label} {_format_pct(value)}"
+    if value < 0:
+        return f"{negative_label} {_format_pct(value)}"
+    return f"{positive_label}/{negative_label} 0.00%"
 
 
-def _biotech_vs_health_text(validation: ValidationResult) -> str:
-    """从支持和反对证据中提取 159567 vs 159557 关系，区分跑赢/跑输/未确认。"""
-    support_hit = _extract_evidence_value(validation.strongest_support, '159567当日跑赢159557')
-    if support_hit:
-        return support_hit
-    oppose_hit = _extract_evidence_value(validation.strongest_opposition, '159567跑输159557')
-    if oppose_hit:
-        return oppose_hit
-    return "未确认"
+def _format_pct(value: float) -> str:
+    return f"{value * 100:.2f}%"
 
 
 def main() -> None:

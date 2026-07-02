@@ -1,6 +1,6 @@
 # S2 数据质量报告
 
-**生成时间**: 2026-06-24T17:21:20
+**生成时间**: 2026-07-01T23:58:47
 
 ## 数据分工
 
@@ -11,19 +11,19 @@
 ## 行情审计
 
 - audited_symbols=31
-- can_use_for_latest_signal=false：0
+- can_use_for_latest_signal=false：12
 - unstable_source：0
-- blocked_symbols：none
+- blocked_symbols：01093.HK, 01177.HK, 01801.HK, 01952.HK, 02096.HK, 02269.HK, 03692.HK, 06160.HK, 06855.HK, 06990.HK, 09926.HK, 09966.HK
 - unstable_symbols：none
 
 ## 表级质量
 
 | 文件 | 行数 | missing_ratio | source_status分布 | fetched_at覆盖率 |
 | --- | ---: | ---: | --- | ---: |
-| data/processed/market_daily.csv | 14970 | 7.45% | success:14970 | 100.00% |
-| data/processed/macro_market_daily.csv | 5012 | 8.61% | failed:1；success:5011 | 100.00% |
-| s2/output/data_audit/market_data_audit.csv | 31 | 26.93% | missing:31 | 100.00% |
-| s2/data/clinical_trade_returns.csv | 10 | 1.05% | missing:10 | 0.00% |
+| data/processed/market_daily.csv | 14901 | 6.00% | success:14901 | 100.00% |
+| data/processed/macro_market_daily.csv | 5021 | 8.61% | failed:1；success:5020 | 100.00% |
+| s2/output/data_audit/market_data_audit.csv | 31 | 25.25% | missing:31 | 100.00% |
+| s2/data/clinical_trade_returns.csv | 10 | 15.26% | missing:10 | 0.00% |
 | data/processed/company_financials.csv | 6 | 51.85% | present_not_reverified:6 | 0.00% |
 | data/processed/bd_events.csv | 16 | 13.72% | present_not_reverified:16 | 0.00% |
 | data/processed/clinical_events.csv | 10 | 13.16% | present_not_reverified:10 | 0.00% |

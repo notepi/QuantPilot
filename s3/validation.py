@@ -45,6 +45,13 @@ class ValidationResult:
     current_ai_state: str
     current_tech_growth_state: str
     market_state: str
+    bio_return: float | None
+    health_return: float | None
+    ai_core_return: float | None
+    tech_growth_core_return: float | None
+    bio_vs_health: float | None
+    bio_vs_ai: float | None
+    bio_vs_tech: float | None
     right_side_score: float | None
     right_side_level: str
     score_confidence: str
@@ -130,6 +137,13 @@ def run_ai_biotech_validation(
         current_ai_state=str(latest.get("ai_state", "missing")) if len(data.frame) else "missing",
         current_tech_growth_state=str(latest.get("tech_state", "missing")) if len(data.frame) else "missing",
         market_state=str(latest.get("market_state", "missing")) if len(data.frame) else "missing",
+        bio_return=_float_or_none(latest.get("bio_ret")),
+        health_return=_float_or_none(latest.get("health_ret")),
+        ai_core_return=_float_or_none(latest.get("ai_core_ret")),
+        tech_growth_core_return=_float_or_none(latest.get("tech_core_ret")),
+        bio_vs_health=_float_or_none(latest.get("bio_vs_health")),
+        bio_vs_ai=_float_or_none(latest.get("bio_vs_ai")),
+        bio_vs_tech=_float_or_none(latest.get("bio_vs_tech")),
         right_side_score=_float_or_none(right_side.get("right_side_score")),
         right_side_level=str(right_side.get("right_side_level") or "missing"),
         score_confidence=str(right_side.get("confidence") or "low"),

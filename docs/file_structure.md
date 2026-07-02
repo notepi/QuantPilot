@@ -56,7 +56,7 @@ QuantPilot/
 │   ├── update_market_data.py       # 港股 ETF 缓存刷新
 │   ├── build_data_layer.py         # S2 行情/宏观/审计数据层
 │   ├── event_store.py              # 事件库写入接口
-│   ├── agent_task.md               # S2 事件收集智能体任务
+│   ├── agent_task.md               # S2 产业验证智能体任务
 │   ├── generate_ai_style_report.py # 兼容 wrapper → 转发到 s3
 │   ├── ai_biotech_validation.py    # 原验证模块（S2 不直接 import）
 │   ├── style_rotation.py           # 原风格模块（S2 不直接 import）
@@ -71,6 +71,7 @@ QuantPilot/
 │   │   └── hk_daily.csv            # 港股个股日线
 │   ├── output/
 │   │   ├── reports/YYYY-MM-DD.md   # S2 产业验证日报
+│   │   ├── watchlist.md            # S2 观察线索池（不进入正式评分）
 │   │   ├── agent_runs/YYYY-MM-DD.md # 智能体扫描留痕
 │   │   ├── hk_cache/               # 港股 ETF 缓存
 │   │   ├── data_audit/             # 数据审计文件

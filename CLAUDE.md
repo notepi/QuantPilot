@@ -32,13 +32,21 @@
 docs/daily_update_runbook.md
 ```
 
-**重要**：每日流程不是只跑下面的代码命令。S2 是“代码 + 智能体”模块，必须先按 `s2/agent_task.md` 执行事件扫描；无论是否发现新增事件，都必须写入：
+**重要**：每日流程不是只跑下面的代码命令。S2 是“代码 + 智能体研究”模块，必须先按 `s2/agent_task.md` 执行事件扫描，并读取/更新 `s2/output/watchlist.md`；无论是否发现新增正式事件，都必须写入：
 
 ```text
 s2/output/agent_runs/YYYY-MM-DD.md
 ```
 
-运行记录要说明检查范围、候选事件、是否写入事件库、验证命令和结果。没有新增事件时，也必须明确写“今日无新增重大产业事件”。
+运行记录要说明今日研究问题、市场与报告线索、watchlist 回看、检查范围、候选事件 triage、是否写入事件库、watchlist 更新、验证命令和结果。没有新增正式事件时，也必须明确写“今日无新增重大产业事件”，并说明候选排除理由或 watchlist 无变化。
+
+S2 文件边界：
+
+| 文件 | 职责 | 是否进入 S2 正式评分 |
+|------|------|---------------------|
+| `s2/data/*.csv` | 已验证、达到阈值的正式事件库 | 是 |
+| `s2/output/watchlist.md` | 未达阈值或待验证的观察线索 | 否 |
+| `s2/output/agent_runs/YYYY-MM-DD.md` | 当日研究过程和验证记录 | 否 |
 
 ```bash
 uv run python -m s2.daily_report_flow
@@ -77,7 +85,7 @@ uv run python -m wb.daily_flow
 | 数据日期诚实标注 | 6 个 S1 指标都应输出 `data_date`；滞后时日报显示⚠️警告 |
 | fund_share.csv 含 source 字段 | `citydata_fund_share` = 历史数据，`eastmoney_fund_etf_spot_em` = 当天补充 |
 | 159567.SZ 已纳入 raw 更新 | `update_fund_daily_incremental()` 包含 589720/159557/159567 三只标的 |
-| 智能体扫描留痕 | 每日必须执行 `s2/agent_task.md`；无新增事件也要写 `s2/output/agent_runs/YYYY-MM-DD.md` |
+| 智能体扫描留痕 | 每日必须执行 `s2/agent_task.md`；回看 `s2/output/watchlist.md`；无新增正式事件也要写 `s2/output/agent_runs/YYYY-MM-DD.md` |
 
 ## 数据接口
 
@@ -112,6 +120,7 @@ CITYDATA_TOKEN=xxx
 - docs/data_governance_audit.md - 数据治理审计
 - docs/daily_update_runbook.md - 每日更新执行规程（Claude/Codex 必读）
 - docs/创新药_第一阶段_v2_claude.xlsx - 指标详细定义（业务口径）
-- s2/agent_task.md - S2 事件收集智能体任务
+- s2/agent_task.md - S2 产业验证智能体任务
+- s2/output/watchlist.md - S2 观察线索池（不进入正式评分）
 - s3/README.md - S3 AI风格轮动模块说明
 - .claude/plans/archive/ - 历史开发计划

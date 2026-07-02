@@ -2370,10 +2370,13 @@ def generate_report(
     ]:
         if hk_update_status.get(key):
             hk_observation[key] = hk_update_status[key]
-    _apply_hk_external_availability(data_dir, report_date, hk_observation)
-    content = render_report(latest_s1, recent_s1, s2, data_dir, output_dir, report_date, hk_observation, hk_update_status)
     policy_events = load_events(data_dir / "policy_risk_events.csv")
     macro_rows = load_events(data_dir / "macro_market_snapshot.csv")
+    _apply_hk_external_availability(data_dir, report_date, hk_observation)
+    _upsert_score(output_dir, report_date, latest_s1, recent_s1, s2, _combination_observation(latest_s1, s2), hk_observation, policy_events, macro_rows)
+    _upsert_item_scores(output_dir, report_date, latest_s1, s2, hk_observation)
+    upsert_hk_observation_history(output_dir, report_date, hk_observation)
+    content = render_report(latest_s1, recent_s1, s2, data_dir, output_dir, report_date, hk_observation, hk_update_status)
     reports_dir = output_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_dir / f"{report_date}.md"
@@ -2386,9 +2389,6 @@ def generate_report(
     briefs_dir.mkdir(parents=True, exist_ok=True)
     (briefs_dir / f"{report_date}.md").write_text(brief, encoding="utf-8")
     (output_dir / "s2_daily_brief.md").write_text(brief, encoding="utf-8")
-    _upsert_score(output_dir, report_date, latest_s1, recent_s1, s2, _combination_observation(latest_s1, s2), hk_observation, policy_events, [])
-    _upsert_item_scores(output_dir, report_date, latest_s1, s2, hk_observation)
-    upsert_hk_observation_history(output_dir, report_date, hk_observation)
     (output_dir / "s2_indicator_history.md").write_text(_render_indicator_history(output_dir), encoding="utf-8")
     return report_path
 
