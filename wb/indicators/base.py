@@ -59,7 +59,28 @@ class IndicatorResult:
         }
         if self.data_date:
             result["data_date"] = self.data_date
+        if self.raw_data:
+            result["raw_data"] = self._convert_raw_data(self.raw_data)
         return result
+
+    def _convert_raw_data(self, data):
+        """转换 raw_data 中的类型为 JSON 可序列化类型"""
+        import numpy as np
+
+        if isinstance(data, dict):
+            return {k: self._convert_raw_data(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._convert_raw_data(v) for v in data]
+        elif isinstance(data, (np.bool_, bool)):
+            return bool(data)
+        elif isinstance(data, (np.integer,)):
+            return int(data)
+        elif isinstance(data, (np.floating,)):
+            return float(data)
+        elif isinstance(data, np.ndarray):
+            return data.tolist()
+        else:
+            return data
 
 
 class BaseIndicator(ABC):

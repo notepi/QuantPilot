@@ -50,11 +50,19 @@ class S1_01CapitalFlow(BaseIndicator):
             end_date=end_date
         )
 
-        if df is None or len(df) < 2:
-            return self.create_result(0.0, trade_date=end_date, data_date="")
+        if df is None or len(df) < self.LOOKBACK_DAYS + 1:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": f"份额数据不足，需要 {self.LOOKBACK_DAYS + 1} 条，实际 {len(df) if df is not None else 0} 条",
+                }
+            )
 
-        # 按日期排序
-        df = df.sort_values("trade_date")
+        # 按日期排序，取最近11条份额记录（diff后得到10个变化日）
+        df = df.sort_values("trade_date").tail(self.LOOKBACK_DAYS + 1)
 
         # 获取实际数据最新日期
         actual_data_date = str(df["trade_date"].max())
@@ -70,6 +78,10 @@ class S1_01CapitalFlow(BaseIndicator):
         # 计算占比
         ratio = positive_days / total_days if total_days > 0 else 0.0
 
+        # 记录实际数据情况
+        actual_share_records = len(df)
+        actual_change_days = total_days
+
         return self.create_result(
             value=ratio,
             trade_date=end_date,
@@ -77,7 +89,11 @@ class S1_01CapitalFlow(BaseIndicator):
             raw_data={
                 "positive_days": positive_days,
                 "total_days": total_days,
+                "actual_share_records": actual_share_records,
+                "actual_change_days": actual_change_days,
+                "expected_change_days": self.LOOKBACK_DAYS,
                 "share_changes": df["share_change"].dropna().tolist(),
+                "insufficient_data": False,
             }
         )
 
@@ -90,6 +106,6 @@ class S1_01CapitalFlow(BaseIndicator):
         """获取开始日期"""
         from datetime import datetime, timedelta
         end = datetime.strptime(end_date, "%Y%m%d")
-        # 预留足够空间（考虑非交易日）
-        start = end - timedelta(days=n_days * 2)
+        # 预留足够空间（考虑春节等长假，需要足够大的窗口）
+        start = end - timedelta(days=n_days * 3)
         return start.strftime("%Y%m%d")

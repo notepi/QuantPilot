@@ -42,8 +42,11 @@ def get_expectation_icon(level: str) -> str:
     return icons.get(level, "⚪")
 
 
-def format_value(code: str, value: float) -> str:
-    """格式化指标值"""
+def format_value(code: str, value: float, raw_data: dict = None) -> str:
+    """格式化指标值，检查数据不足"""
+    if raw_data and isinstance(raw_data, dict) and raw_data.get("insufficient_data"):
+        return "数据不足 ⚪"
+
     if code == "S1-04":
         return f"{value:.2f}x"
     else:
@@ -66,6 +69,9 @@ def generate_report() -> str:
             # 收集数据日期
             if ind.get("data_date"):
                 record[f"{ind['code']}_数据日期"] = ind["data_date"]
+            # 收集 raw_data
+            if ind.get("raw_data"):
+                record[f"{ind['code']}_raw_data"] = ind["raw_data"]
         record["综合得分"] = data["total_score"]
         record["预期等级"] = data["expectation_level"]
 
@@ -131,8 +137,16 @@ def generate_report() -> str:
         for code in ["S1-01", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06"]:
             val = row.get(code, 0)
             exp = row.get(f"{code}_预期", "未知")
-            icon = get_expectation_icon(exp)
-            formatted = format_value(code, val)
+            raw_data = row.get(f"{code}_raw_data")
+
+            # 数据不足时显示特殊图标
+            if raw_data and isinstance(raw_data, dict) and raw_data.get("insufficient_data"):
+                formatted = "数据不足"
+                icon = "⚪"
+            else:
+                icon = get_expectation_icon(exp)
+                formatted = format_value(code, val, raw_data)
+
             values.append(f"{formatted} {icon}")
 
         score = row["综合得分"]
@@ -145,7 +159,7 @@ def generate_report() -> str:
     lines.append("")
 
     # 图例
-    lines.append("**图例**: 🟢 超预期 | 🟡 符合预期 | 🔴 低于预期")
+    lines.append("**图例**: 🟢 超预期 | 🟡 符合预期 | 🔴 低于预期 | ⚪ 数据不足")
     lines.append("")
 
     # 表格2：指标说明

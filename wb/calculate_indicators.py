@@ -52,24 +52,30 @@ def calculate_and_save(trade_date: str = None):
 
 def calculate_history(days: int = 30):
     """
-    计算历史指标（用于回测）
+    计算历史指标（只在真实交易日上）
 
     Args:
         days: 回溯天数
     """
-    from datetime import timedelta
+    import pandas as pd
 
-    end_date = datetime.now()
+    # 从 fund_daily.csv 获取 589720.SH 的交易日
+    fund_daily_path = RAW_DIR / "fund_daily.csv"
+    if not fund_daily_path.exists():
+        print("错误: fund_daily.csv 不存在")
+        return
+
+    fund_daily = pd.read_csv(fund_daily_path)
+
+    trade_dates = (
+        fund_daily[fund_daily["ts_code"] == "589720.SH"]["trade_date"]
+        .astype(str)
+        .sort_values()
+        .tail(days)
+    )
+
     count = 0
-
-    for i in range(days):
-        date = end_date - timedelta(days=i)
-        date_str = date.strftime("%Y%m%d")
-
-        # 跳过周末
-        if date.weekday() >= 5:
-            continue
-
+    for date_str in trade_dates:
         result = calculate_and_save(trade_date=date_str)
         if result:
             count += 1

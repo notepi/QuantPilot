@@ -56,6 +56,117 @@ def get_local_dates(filename: str, ts_code: str = None) -> set:
     return set(df["trade_date"].astype(str).tolist())
 
 
+def check_daily_completeness(start_date: str = None, end_date: str = None) -> dict:
+    """
+    检查 daily.csv 数据完整性（所有股票是否都有每个交易日的数据）
+
+    Args:
+        start_date: 检查起始日期，默认检查最近30天
+        end_date: 检查结束日期，默认今天
+
+    Returns:
+        dict: {
+            "missing_count": 缺失记录数,
+            "missing_details": [{"ts_code": ..., "trade_date": ...}, ...],
+            "stocks_with_missing": [缺数据的股票代码],
+            "dates_with_missing": [缺数据的日期],
+        }
+    """
+    from datetime import datetime, timedelta
+
+    # 读取 daily.csv
+    daily_file = DATA_DIR / "daily.csv"
+    if not daily_file.exists():
+        return {"missing_count": 0, "missing_details": [], "error": "daily.csv 不存在"}
+
+    df = pd.read_csv(daily_file)
+
+    # 获取成分股列表
+    portfolio_file = DATA_DIR / "fund_portfolio.csv"
+    if not portfolio_file.exists():
+        return {"missing_count": 0, "missing_details": [], "error": "fund_portfolio.csv 不存在"}
+
+    df_portfolio = pd.read_csv(portfolio_file)
+    latest_period = df_portfolio["end_date"].max()
+    holdings = df_portfolio[df_portfolio["end_date"] == latest_period]
+    ts_codes = holdings["symbol"].unique().tolist()
+
+    # 默认检查最近30天
+    if end_date is None:
+        end_date = datetime.now().strftime("%Y%m%d")
+    if start_date is None:
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+
+    # 从 ETF 数据推断交易日历（ETF 每天都有数据）
+    etf_dates = get_local_dates("fund_daily.csv", ETF_CODE)
+    trading_dates = sorted([d for d in etf_dates if start_date <= d <= end_date])
+
+    if not trading_dates:
+        return {"missing_count": 0, "missing_details": [], "error": "无交易日数据"}
+
+    # 检查每只股票在每个交易日是否有数据
+    missing_details = []
+    for trade_date in trading_dates:
+        for ts_code in ts_codes:
+            mask = (df["ts_code"] == ts_code) & (df["trade_date"].astype(str) == trade_date)
+            if len(df[mask]) == 0:
+                missing_details.append({
+                    "ts_code": ts_code,
+                    "trade_date": trade_date,
+                })
+
+    # 统计
+    stocks_with_missing = list(set(d["ts_code"] for d in missing_details))
+    dates_with_missing = sorted(set(d["trade_date"] for d in missing_details))
+
+    return {
+        "missing_count": len(missing_details),
+        "missing_details": missing_details,
+        "stocks_with_missing": stocks_with_missing,
+        "dates_with_missing": dates_with_missing,
+        "trading_dates_checked": len(trading_dates),
+        "stocks_checked": len(ts_codes),
+    }
+
+
+def fix_daily_missing(start_date: str = None, end_date: str = None) -> int:
+    """
+    自动补齐 daily.csv 缺失数据
+
+    Args:
+        start_date: 补齐起始日期
+        end_date: 补齐结束日期
+
+    Returns:
+        int: 补齐的记录数
+    """
+    result = check_daily_completeness(start_date, end_date)
+
+    if result.get("missing_count", 0) == 0:
+        print("  数据完整，无需补齐")
+        return 0
+
+    missing_details = result["missing_details"]
+    print(f"  发现 {len(missing_details)} 条缺失记录，正在补齐...")
+
+    # 按日期分组批量获取
+    dates_to_fetch = sorted(set(d["trade_date"] for d in missing_details))
+    codes_to_fetch = list(set(d["ts_code"] for d in missing_details))
+
+    total_fixed = 0
+    for date in dates_to_fetch:
+        codes_needed = [d["ts_code"] for d in missing_details if d["trade_date"] == date]
+        df = fetch_daily(codes_needed, date, date)
+
+        if len(df) > 0:
+            append_to_file(df, "daily.csv")
+            total_fixed += len(df)
+            print(f"    {date}: 补齐 {len(df)} 条")
+
+    print(f"  共补齐 {total_fixed} 条记录")
+    return total_fixed
+
+
 def check_data_status():
     """
     检查数据状态
@@ -162,14 +273,11 @@ def fetch_fund_daily(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
 
 def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
     """
-    获取ETF份额数据：citydata（历史）→ 东方财富（当天补充）→ 上交所（沪市备用）
+    获取ETF份额数据：上交所（主源）→ 东方财富（备用）
 
     数据源优先级：
-    1. citydata fund_share（历史数据完整）
-    2. 东方财富 fund_etf_spot_em（当天数据补充）
-    3. 上交所 fund_etf_scale_sse（沪市备用，当前有 akshare bug）
-
-    注意：API 可能返回全部数据，需要在此过滤
+    1. 上交所 fund_etf_scale_sse（主源，数据完整）
+    2. 东方财富 fund_etf_spot_em（备用，仅当天数据）
 
     Args:
         ts_code: ETF代码
@@ -179,21 +287,19 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
     Returns:
         DataFrame (已过滤)
     """
-    pro = citydata_pro_api()
     frames = []
 
-    # 1. 主源：citydata（历史数据）
-    try:
-        df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
-        if df is not None and len(df) > 0 and "trade_date" in df.columns:
-            df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
-            frames.append(df)
-        elif df is not None and len(df) > 0:
-            print(f"  {ts_code}: fund_share返回缺少trade_date，尝试备用源；columns={list(df.columns)}")
-    except Exception as e:
-        print(f"  {ts_code}: citydata fund_share主源异常: {e}，将尝试备用源")
+    # 1. 主源：上交所（沪市 ETF）
+    if ts_code.endswith(".SH"):
+        try:
+            sse_df = fetch_fund_share_sse(ts_code, start_date, end_date)
+            if sse_df is not None and len(sse_df) > 0:
+                frames.append(sse_df)
+                print(f"  {ts_code}: 上交所获取份额数据成功 ({len(sse_df)} 条)")
+        except Exception as e:
+            print(f"  {ts_code}: 上交所份额获取失败: {e}")
 
-    # 2. 检查是否需要补充当天数据（东方财富备用源）
+    # 2. 备用源：东方财富（补充缺失数据）
     combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     latest = str(combined["trade_date"].max()) if not combined.empty and "trade_date" in combined.columns else ""
 
@@ -201,28 +307,12 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
         try:
             em_df = fetch_fund_share_em(ts_code)
             if em_df is not None and len(em_df) > 0:
-                # 校验：东方财富日期必须在 [start_date, end_date] 区间内，且大于 citydata 最新日期
                 em_date = str(em_df["trade_date"].iloc[0]) if "trade_date" in em_df.columns else ""
                 if em_date and em_date >= start_date and em_date <= end_date and em_date > latest:
                     frames.append(em_df)
-                    print(f"  {ts_code}: 东方财富补充当天份额数据成功 (日期={em_date})")
-                elif em_date and em_date == latest:
-                    # 同日期，跳过不重复追加
-                    print(f"  {ts_code}: 东方财富日期={em_date} 与 citydata 一致，跳过")
-                elif em_date:
-                    print(f"  {ts_code}: 东方财富日期={em_date} 不在补充范围 [{latest}, {end_date}]，跳过")
+                    print(f"  {ts_code}: 东方财富补充份额数据成功 (日期={em_date})")
         except Exception as e:
             print(f"  {ts_code}: 东方财富份额获取失败: {e}")
-
-    # 3. 上交所备用源（仅沪市 ETF）
-    if ts_code.endswith(".SH"):
-        combined2 = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-        latest2 = str(combined2["trade_date"].max()) if not combined2.empty and "trade_date" in combined2.columns else ""
-        if latest2 < end_date:
-            fallback_start = max(start_date, latest2) if latest2 else start_date
-            fallback = fetch_fund_share_sse(ts_code, fallback_start, end_date)
-            if len(fallback) > 0:
-                frames.append(fallback)
 
     if not frames:
         return pd.DataFrame()
@@ -324,6 +414,7 @@ def fetch_fund_share_sse(ts_code: str, start_date: str, end_date: str) -> pd.Dat
                 "fd_share": float(share) / 10000.0,
                 "fund_type": "ETF",
                 "market": "SH",
+                "source": "sse_fund_etf_scale",
             }
         )
 
@@ -560,7 +651,13 @@ def update_all():
     update_fund_portfolio()
     update_daily_incremental()
 
-    # 3. 再次检查状态
+    # 3. 检查数据完整性并自动补齐
+    print("\n" + "=" * 50)
+    print("数据完整性检查")
+    print("=" * 50)
+    fix_daily_missing()
+
+    # 4. 再次检查状态
     print("\n" + "=" * 50)
     print("更新后状态")
     print("=" * 50)

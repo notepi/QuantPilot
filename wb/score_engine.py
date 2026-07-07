@@ -94,13 +94,13 @@ class ScoreEngine:
                 })
 
         # 计算加权综合得分
-        total_score = self._calculate_weighted_score(results)
+        total_score, insufficient_count = self._calculate_weighted_score(results)
 
         # 评定综合预期等级
         expectation_level = self._evaluate_expectation_level(total_score)
 
         # 生成评价摘要
-        summary = self._generate_summary(results, total_score, expectation_level)
+        summary = self._generate_summary(results, total_score, expectation_level, insufficient_count)
 
         return PhaseScore(
             phase="第一阶段",
@@ -131,20 +131,30 @@ class ScoreEngine:
 
         return self.indicators[indicator_code].calculate(trade_date=trade_date)
 
-    def _calculate_weighted_score(self, results: List[IndicatorResult]) -> float:
+    def _calculate_weighted_score(self, results: List[IndicatorResult]) -> tuple:
         """
-        计算加权综合得分
+        计算加权综合得分，排除数据不足的指标
+
+        Returns:
+            (score, insufficient_count): 综合得分和数据不足指标数
 
         各指标得分计算规则：
         - 超预期: 1.0
         - 符合预期: 0.7
         - 低于预期: 0.4
         - 未设定阈值: 0.5
+        - 数据不足: 不参与评分
         """
         total_weight = 0.0
         weighted_sum = 0.0
+        insufficient_count = 0
 
         for result in results:
+            # 检查数据不足
+            if result.raw_data and result.raw_data.get("insufficient_data"):
+                insufficient_count += 1
+                continue  # 跳过，不参与评分
+
             weight = result.weight
 
             # 根据预期等级计算得分
@@ -161,7 +171,9 @@ class ScoreEngine:
             weighted_sum += score * weight
             total_weight += weight
 
-        return weighted_sum / total_weight if total_weight > 0 else 0.0
+        # 剩余指标权重归一化
+        final_score = weighted_sum / total_weight if total_weight > 0 else 0.0
+        return final_score, insufficient_count
 
     def _evaluate_expectation_level(self, total_score: float) -> str:
         """评定综合预期等级"""
@@ -179,6 +191,7 @@ class ScoreEngine:
         results: List[IndicatorResult],
         total_score: float,
         expectation_level: str,
+        insufficient_count: int = 0,
     ) -> str:
         """
         生成评价摘要
@@ -187,6 +200,7 @@ class ScoreEngine:
             results: 各指标结果
             total_score: 综合得分
             expectation_level: 预期等级
+            insufficient_count: 数据不足指标数
 
         Returns:
             评价摘要文本
@@ -197,6 +211,10 @@ class ScoreEngine:
         below_count = 0
 
         for result in results:
+            # 跳过数据不足的指标
+            if result.raw_data and result.raw_data.get("insufficient_data"):
+                continue
+
             expectation = result.expectation or result.evaluate_expectation()
             if expectation == "超预期":
                 exceed_count += 1
@@ -206,14 +224,23 @@ class ScoreEngine:
                 below_count += 1
 
         # 构建摘要
+        total_valid = exceed_count + meet_count + below_count
         summary_parts = [
             f"综合得分 {total_score:.2f}，整体表现{expectation_level}。",
-            f"6项指标中：超预期{exceed_count}项，符合预期{meet_count}项，低于预期{below_count}项。",
+            f"{total_valid}项有效指标中：超预期{exceed_count}项，符合预期{meet_count}项，低于预期{below_count}项。",
         ]
+
+        # 数据不足标注
+        if insufficient_count > 0:
+            summary_parts.append(f"[{insufficient_count}项指标数据不足] ")
 
         # 添加关键指标说明
         key_indicators = []
         for result in results:
+            # 跳过数据不足的指标
+            if result.raw_data and result.raw_data.get("insufficient_data"):
+                continue
+
             expectation = result.expectation or result.evaluate_expectation()
             if expectation == "超预期":
                 key_indicators.append(f"{result.name}表现突出")

@@ -7,63 +7,248 @@
     {
       "code": "S1-01",
       "name": "资金回流连续性",
-      "value": 0.75,
+      "value": 0.7,
       "weight": 0.22,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "超预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "positive_days": 7,
+        "total_days": 10,
+        "actual_share_records": 11,
+        "actual_change_days": 10,
+        "expected_change_days": 10,
+        "share_changes": [
+          3300.0,
+          1500.0,
+          1300.0,
+          12400.0,
+          3300.0,
+          2400.0,
+          1400.0,
+          -9400.0,
+          -3400.0,
+          -2400.0
+        ],
+        "insufficient_data": false
+      }
     },
     {
       "code": "S1-02",
       "name": "ETF份额变化",
-      "value": 0.0914981221606324,
+      "value": 0.057912166176733455,
       "weight": 0.18,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "超预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "start_share": 179582.3,
+        "end_share": 189982.3,
+        "share_change": 10400.0,
+        "start_date": "20260527",
+        "end_date": "20260610",
+        "actual_share_records": 11,
+        "actual_trade_days": 10,
+        "expected_trade_days": 10,
+        "insufficient_data": false
+      }
     },
     {
       "code": "S1-03",
       "name": "ETF相对强度",
-      "value": -0.04709688367372998,
+      "value": -0.02999143640407964,
       "weight": 0.2,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "低于预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "etf_return": -0.11957796014067994,
+        "benchmark_return": -0.0895865237366003,
+        "common_dates_count": 11,
+        "etf_start_close": 0.853,
+        "etf_end_close": 0.751,
+        "benchmark_start_close": 1.306,
+        "benchmark_end_close": 1.189,
+        "insufficient_data": false
+      }
     },
     {
       "code": "S1-04",
       "name": "成交放大持续性",
-      "value": 0.8472434723460714,
+      "value": 0.8472434878953555,
       "weight": 0.14,
       "unit": "ratio",
       "direction": "higher_better",
       "expectation": "低于预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "avg_5d": 171786.2,
+        "avg_20d": 202758.95,
+        "lookback_days": 20,
+        "latest_amount": 147543.0
+      }
     },
     {
       "code": "S1-05",
       "name": "板块广度修复",
-      "value": 0.26666666666666666,
+      "value": 0.2,
       "weight": 0.14,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "低于预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "stocks_above_ma": 3,
+        "total_stocks": 15,
+        "report_period": 20260331,
+        "stock_details": [
+          {
+            "code": "688131.SH",
+            "above_ma": true,
+            "latest_close": 74.66,
+            "ma20": 74.54
+          },
+          {
+            "code": "688781.SH",
+            "above_ma": false,
+            "latest_close": 48.0,
+            "ma20": 50.094500000000004
+          },
+          {
+            "code": "688235.SH",
+            "above_ma": false,
+            "latest_close": 213.34,
+            "ma20": 234.377
+          },
+          {
+            "code": "688802.SH",
+            "above_ma": false,
+            "latest_close": 694.0,
+            "ma20": 715.919
+          },
+          {
+            "code": "688331.SH",
+            "above_ma": false,
+            "latest_close": 104.0,
+            "ma20": 110.849
+          },
+          {
+            "code": "688809.SH",
+            "above_ma": true,
+            "latest_close": 540.99,
+            "ma20": 483.408
+          },
+          {
+            "code": "688180.SH",
+            "above_ma": false,
+            "latest_close": 29.53,
+            "ma20": 34.3875
+          },
+          {
+            "code": "688278.SH",
+            "above_ma": true,
+            "latest_close": 57.0,
+            "ma20": 56.70550000000001
+          },
+          {
+            "code": "603459.SH",
+            "above_ma": false,
+            "latest_close": 83.89,
+            "ma20": 96.38550000000001
+          },
+          {
+            "code": "688266.SH",
+            "above_ma": false,
+            "latest_close": 92.99,
+            "ma20": 97.05250000000001
+          }
+        ]
+      }
     },
     {
       "code": "S1-06",
       "name": "龙头先行强度",
-      "value": 0.00171589747575851,
+      "value": 0.02237341147373592,
       "weight": 0.12,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "符合预期",
-      "trade_date": "20260610"
+      "trade_date": "20260610",
+      "data_date": "20260610",
+      "raw_data": {
+        "leader_weighted_return": -0.09720454866694402,
+        "etf_return": -0.11957796014067994,
+        "leader_details": [
+          {
+            "code": "688235.SH",
+            "return": -0.10878101762887456,
+            "weight": 0.2413,
+            "insufficient_data": false,
+            "data_points_in_window": 11,
+            "start_date": "20260527",
+            "end_date": "20260610",
+            "start_close": 239.38,
+            "end_close": 213.34
+          },
+          {
+            "code": "688578.SH",
+            "return": -0.09834609834609834,
+            "weight": 0.2363,
+            "insufficient_data": false,
+            "data_points_in_window": 11,
+            "start_date": "20260527",
+            "end_date": "20260610",
+            "start_close": 90.09,
+            "end_close": 81.23
+          },
+          {
+            "code": "688506.SH",
+            "return": -0.06673454668872775,
+            "weight": 0.2241,
+            "insufficient_data": false,
+            "data_points_in_window": 11,
+            "start_date": "20260527",
+            "end_date": "20260610",
+            "start_close": 235.71,
+            "end_close": 219.98
+          },
+          {
+            "code": "688180.SH",
+            "return": -0.1403202328966521,
+            "weight": 0.154,
+            "insufficient_data": false,
+            "data_points_in_window": 11,
+            "start_date": "20260527",
+            "end_date": "20260610",
+            "start_close": 34.35,
+            "end_close": 29.53
+          },
+          {
+            "code": "688266.SH",
+            "return": -0.07729708275451484,
+            "weight": 0.1444,
+            "insufficient_data": false,
+            "data_points_in_window": 11,
+            "start_date": "20260527",
+            "end_date": "20260610",
+            "start_close": 100.78,
+            "end_close": 92.99
+          }
+        ],
+        "valid_stocks_count": 5,
+        "total_stocks": 5,
+        "etf_window_dates_count": 11,
+        "insufficient_data": false
+      }
     }
   ],
-  "summary": "综合得分 0.68，整体表现符合预期。6项指标中：超预期2项，符合预期1项，低于预期3项。主要特征：资金回流连续性表现突出、ETF份额变化表现突出、ETF相对强度需关注。"
+  "summary": "综合得分 0.68，整体表现符合预期。6项有效指标中：超预期2项，符合预期1项，低于预期3项。主要特征：资金回流连续性表现突出、ETF份额变化表现突出、ETF相对强度需关注。"
 }

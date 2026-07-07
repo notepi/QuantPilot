@@ -1,0 +1,153 @@
+{
+  "phase": "第一阶段",
+  "trade_date": "20250807",
+  "total_score": 0.4,
+  "expectation_level": "低于预期",
+  "indicator_results": [
+    {
+      "code": "S1-01",
+      "name": "资金回流连续性",
+      "value": 0.0,
+      "weight": 0.22,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20250807",
+      "raw_data": {
+        "insufficient_data": true,
+        "reason": "份额数据不足，需要 11 条，实际 5 条"
+      }
+    },
+    {
+      "code": "S1-02",
+      "name": "ETF份额变化",
+      "value": 0.0,
+      "weight": 0.18,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "符合预期",
+      "trade_date": "20250807",
+      "raw_data": {
+        "insufficient_data": true,
+        "reason": "份额数据不足，需要 11 条，实际 5 条"
+      }
+    },
+    {
+      "code": "S1-03",
+      "name": "ETF相对强度",
+      "value": 0.0,
+      "weight": 0.2,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "符合预期",
+      "trade_date": "20250807",
+      "raw_data": {
+        "insufficient_data": true,
+        "reason": "共同交易日不足，需要 11 个，实际 5 个",
+        "etf_dates_count": 5,
+        "benchmark_dates_count": 23,
+        "common_dates_count": 5
+      }
+    },
+    {
+      "code": "S1-04",
+      "name": "成交放大持续性",
+      "value": 1.0,
+      "weight": 0.14,
+      "unit": "ratio",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20250807",
+      "data_date": "20250807",
+      "raw_data": {
+        "avg_5d": 123770.71999999997,
+        "avg_20d": 123770.71999999997,
+        "lookback_days": 5,
+        "latest_amount": 57883.2
+      }
+    },
+    {
+      "code": "S1-05",
+      "name": "板块广度修复",
+      "value": 0.0,
+      "weight": 0.14,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20250807",
+      "data_date": "20250807",
+      "raw_data": {
+        "stocks_above_ma": 0,
+        "total_stocks": 15,
+        "report_period": 20260331,
+        "stock_details": [
+          {
+            "code": "688131.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688781.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688235.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688802.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688331.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688809.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688180.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688278.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "603459.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          },
+          {
+            "code": "688266.SH",
+            "above_ma": false,
+            "reason": "数据不足"
+          }
+        ]
+      }
+    },
+    {
+      "code": "S1-06",
+      "name": "龙头先行强度",
+      "value": 0.0,
+      "weight": 0.12,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "符合预期",
+      "trade_date": "20250807",
+      "raw_data": {
+        "insufficient_data": true,
+        "reason": "ETF 数据不足"
+      }
+    }
+  ],
+  "summary": "综合得分 0.40，整体表现低于预期。2项有效指标中：超预期0项，符合预期0项，低于预期2项。[4项指标数据不足] 主要特征：成交放大持续性需关注、板块广度修复需关注。"
+}

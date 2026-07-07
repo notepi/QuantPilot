@@ -57,47 +57,77 @@ class S1_03RelativeStrength(BaseIndicator):
             end_date=end_date
         )
 
-        if etf_df is None or len(etf_df) < 2:
-            etf_return = 0.0
-            etf_data_date = ""
-        else:
-            etf_df = etf_df.sort_values("trade_date")
-            etf_return = self._calc_return(etf_df["close"])
-            etf_data_date = str(etf_df["trade_date"].max())
+        # 检查数据是否可用
+        if etf_df is None or len(etf_df) == 0 or benchmark_df is None or len(benchmark_df) == 0:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": "ETF 或 benchmark 数据获取失败",
+                }
+            )
 
-        if benchmark_df is None or len(benchmark_df) < 2:
-            benchmark_return = 0.0
-            benchmark_data_date = ""
-        else:
-            benchmark_df = benchmark_df.sort_values("trade_date")
-            benchmark_return = self._calc_return(benchmark_df["close"])
-            benchmark_data_date = str(benchmark_df["trade_date"].max())
+        # 先取共同日期，再 tail(11)
+        etf_dates = set(etf_df["trade_date"].astype(str))
+        benchmark_dates = set(benchmark_df["trade_date"].astype(str))
+        common_dates = sorted(etf_dates & benchmark_dates, reverse=True)
 
-        # 取最保守（最早）的数据日期
-        data_dates = [d for d in [etf_data_date, benchmark_data_date] if d]
-        actual_data_date = min(data_dates) if data_dates else ""
+        if len(common_dates) < self.LOOKBACK_DAYS + 1:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": f"共同交易日不足，需要 {self.LOOKBACK_DAYS + 1} 个，实际 {len(common_dates)} 个",
+                    "etf_dates_count": len(etf_dates),
+                    "benchmark_dates_count": len(benchmark_dates),
+                    "common_dates_count": len(common_dates),
+                }
+            )
+
+        # 从共同日期里取最近 11 个
+        common_dates = common_dates[:self.LOOKBACK_DAYS + 1]
+
+        # 按共同日期过滤
+        etf_df = etf_df[etf_df["trade_date"].astype(str).isin(common_dates)].sort_values("trade_date")
+        benchmark_df = benchmark_df[benchmark_df["trade_date"].astype(str).isin(common_dates)].sort_values("trade_date")
+
+        # 计算收益率（11 个数据点，计算 10 日收益）
+        etf_return = self._calc_return(etf_df["close"])
+        benchmark_return = self._calc_return(benchmark_df["close"])
+
+        # 记录 data_date（取最保守的日期）
+        data_date = str(min(etf_df["trade_date"].max(), benchmark_df["trade_date"].max()))
 
         relative_strength = etf_return - benchmark_return
 
         return self.create_result(
             value=relative_strength,
             trade_date=end_date,
-            data_date=actual_data_date,
+            data_date=data_date,
             raw_data={
                 "etf_return": etf_return,
                 "benchmark_return": benchmark_return,
-                "etf_start_close": etf_df["close"].iloc[0] if etf_df is not None and len(etf_df) > 0 else None,
-                "etf_end_close": etf_df["close"].iloc[-1] if etf_df is not None and len(etf_df) > 0 else None,
-                "benchmark_start_close": benchmark_df["close"].iloc[0] if benchmark_df is not None and len(benchmark_df) > 0 else None,
-                "benchmark_end_close": benchmark_df["close"].iloc[-1] if benchmark_df is not None and len(benchmark_df) > 0 else None,
+                "common_dates_count": len(common_dates),
+                "etf_start_close": float(etf_df["close"].iloc[0]),
+                "etf_end_close": float(etf_df["close"].iloc[-1]),
+                "benchmark_start_close": float(benchmark_df["close"].iloc[0]),
+                "benchmark_end_close": float(benchmark_df["close"].iloc[-1]),
+                "insufficient_data": False,
             }
         )
 
     def _calc_return(self, prices: pd.Series) -> float:
-        """计算收益率"""
-        if len(prices) < 2 or prices.iloc[0] == 0:
+        """计算 10 日收益率"""
+        if len(prices) < 11:
+            # 不应该发生，因为前面已经检查过共同日期
             return 0.0
-        return (prices.iloc[-1] - prices.iloc[0]) / prices.iloc[0]
+        if prices.iloc[-11] == 0:
+            return 0.0
+        return (prices.iloc[-1] - prices.iloc[-11]) / prices.iloc[-11]
 
     def _get_latest_date(self) -> str:
         """获取最新交易日期"""
@@ -108,5 +138,6 @@ class S1_03RelativeStrength(BaseIndicator):
         """获取开始日期"""
         from datetime import datetime, timedelta
         end = datetime.strptime(end_date, "%Y%m%d")
-        start = end - timedelta(days=n_days * 2)
+        # 预留足够空间（考虑春节等长假）
+        start = end - timedelta(days=n_days * 3)
         return start.strftime("%Y%m%d")

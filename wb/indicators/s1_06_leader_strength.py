@@ -57,75 +57,124 @@ class S1_06LeaderStrength(BaseIndicator):
         end_date = trade_date or self._get_latest_date()
         start_date = self._get_start_date(end_date, self.LOOKBACK_DAYS)
 
-        # 1. 批量获取龙头组合A股数据（一次请求）
-        df_all = self.data_fetcher.get_daily_batch(
-            ts_codes=self.LEADER_STOCKS,
-            start_date=start_date,
-            end_date=end_date
-        )
-
-        leader_returns = []
-        leader_details = []
-
-        if df_all is None or len(df_all) == 0:
-            # 数据获取失败
-            daily_data_date = ""
-            for code in self.LEADER_STOCKS:
-                leader_returns.append(0.0)
-                leader_details.append({
-                    "code": code,
-                    "return": 0.0,
-                    "reason": "数据获取失败"
-                })
-        else:
-            # 按股票分组计算收益
-            daily_data_date = str(df_all["trade_date"].max()) if "trade_date" in df_all.columns else ""
-            for code in self.LEADER_STOCKS:
-                stock_df = df_all[df_all["ts_code"] == code].sort_values("trade_date")
-
-                if len(stock_df) < 2:
-                    leader_returns.append(0.0)
-                    leader_details.append({
-                        "code": code,
-                        "return": 0.0,
-                        "reason": "数据不足"
-                    })
-                    continue
-
-                ret = self._calc_return(stock_df["close"])
-                leader_returns.append(ret)
-                leader_details.append({
-                    "code": code,
-                    "return": ret,
-                    "start_close": stock_df["close"].iloc[0],
-                    "end_close": stock_df["close"].iloc[-1],
-                })
-
-        # 加权平均收益
-        total_weight = sum(self.LEADER_WEIGHTS)
-        weighted_return = sum(r * w for r, w in zip(leader_returns, self.LEADER_WEIGHTS)) / total_weight
-
-        # 2. 计算ETF收益
+        # 1. 获取 ETF 数据
         etf_df = self.data_fetcher.get_fund_daily(
             ts_code=self.ETF_CODE,
             start_date=start_date,
             end_date=end_date
         )
 
-        if etf_df is None or len(etf_df) < 2:
-            etf_return = 0.0
-            etf_data_date = ""
-        else:
-            etf_df = etf_df.sort_values("trade_date")
-            etf_return = self._calc_return(etf_df["close"])
-            etf_data_date = str(etf_df["trade_date"].max())
+        if etf_df is None or len(etf_df) < self.LOOKBACK_DAYS + 1:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": "ETF 数据不足",
+                }
+            )
 
-        # 取最保守的数据日期
-        data_dates = [d for d in [daily_data_date, etf_data_date] if d]
-        actual_data_date = min(data_dates) if data_dates else ""
+        # 2. 先取 ETF 最近 11 个交易日作为窗口
+        etf_df = etf_df.sort_values("trade_date")
+        etf_window_dates = set(etf_df["trade_date"].astype(str).tail(self.LOOKBACK_DAYS + 1))
 
-        # 3. 计算龙头先行强度
+        if len(etf_window_dates) < self.LOOKBACK_DAYS + 1:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": "ETF 窗口日期不足 11 个",
+                }
+            )
+
+        # 3. 计算 ETF 收益
+        etf_return = self._calc_return(etf_df["close"])
+
+        # 4. 获取龙头股数据
+        df_all = self.data_fetcher.get_daily_batch(
+            ts_codes=self.LEADER_STOCKS,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        if df_all is None or len(df_all) == 0:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": "龙头股数据获取失败",
+                }
+            )
+
+        # 5. 计算每只龙头股收益（在 ETF 窗口内判断数据充足性）
+        leader_returns = []
+        leader_weights_used = []
+        leader_details = []
+
+        for code, weight in zip(self.LEADER_STOCKS, self.LEADER_WEIGHTS):
+            stock_df = df_all[df_all["ts_code"] == code]
+
+            # 只保留在 ETF 窗口内的数据
+            stock_df_in_window = stock_df[stock_df["trade_date"].astype(str).isin(etf_window_dates)].sort_values("trade_date")
+
+            if len(stock_df_in_window) < self.LOOKBACK_DAYS + 1:
+                # 该股票在窗口内数据不足，跳过
+                leader_details.append({
+                    "code": code,
+                    "return": 0.0,
+                    "weight": weight,
+                    "insufficient_data": True,
+                    "data_points_in_window": len(stock_df_in_window),
+                    "required_points": self.LOOKBACK_DAYS + 1,
+                })
+                continue
+
+            # 计算该股票收益
+            ret = self._calc_return(stock_df_in_window["close"])
+            leader_returns.append(ret)
+            leader_weights_used.append(weight)
+            leader_details.append({
+                "code": code,
+                "return": ret,
+                "weight": weight,
+                "insufficient_data": False,
+                "data_points_in_window": len(stock_df_in_window),
+                "start_date": str(stock_df_in_window["trade_date"].iloc[-11]),
+                "end_date": str(stock_df_in_window["trade_date"].iloc[-1]),
+                "start_close": float(stock_df_in_window["close"].iloc[-11]),
+                "end_close": float(stock_df_in_window["close"].iloc[-1]),
+            })
+
+        # 6. 检查是否有足够的有效股票
+        if len(leader_returns) == 0:
+            return self.create_result(
+                value=0.0,
+                trade_date=end_date,
+                data_date="",
+                raw_data={
+                    "insufficient_data": True,
+                    "reason": "所有龙头股在 ETF 窗口内数据均不足",
+                    "leader_details": leader_details,
+                }
+            )
+
+        # 7. 加权平均收益（使用有效股票的权重重归一化）
+        total_weight = sum(leader_weights_used)
+        weighted_return = sum(r * w for r, w in zip(leader_returns, leader_weights_used)) / total_weight
+
+        # 8. 计算龙头先行强度
         leader_strength = weighted_return - etf_return
+
+        # 9. 记录 data_date（取最保守的日期）
+        etf_data_date = str(etf_df["trade_date"].max())
+        stock_data_dates = [d["end_date"] for d in leader_details if not d.get("insufficient_data")]
+        data_dates = [etf_data_date] + stock_data_dates
+        actual_data_date = min(data_dates) if data_dates else ""
 
         return self.create_result(
             value=leader_strength,
@@ -134,16 +183,21 @@ class S1_06LeaderStrength(BaseIndicator):
             raw_data={
                 "leader_weighted_return": weighted_return,
                 "etf_return": etf_return,
-                "leader_returns": leader_returns,
                 "leader_details": leader_details,
+                "valid_stocks_count": len(leader_returns),
+                "total_stocks": len(self.LEADER_STOCKS),
+                "etf_window_dates_count": len(etf_window_dates),
+                "insufficient_data": False,
             }
         )
 
     def _calc_return(self, prices: pd.Series) -> float:
-        """计算收益率"""
-        if len(prices) < 2 or prices.iloc[0] == 0:
+        """计算 10 日收益率"""
+        if len(prices) < 11:
             return 0.0
-        return (prices.iloc[-1] - prices.iloc[0]) / prices.iloc[0]
+        if prices.iloc[-11] == 0:
+            return 0.0
+        return (prices.iloc[-1] - prices.iloc[-11]) / prices.iloc[-11]
 
     def _get_latest_date(self) -> str:
         """获取最新交易日期"""
@@ -154,5 +208,6 @@ class S1_06LeaderStrength(BaseIndicator):
         """获取开始日期"""
         from datetime import datetime, timedelta
         end = datetime.strptime(end_date, "%Y%m%d")
-        start = end - timedelta(days=n_days * 2)
+        # 预留足够空间（考虑春节等长假）
+        start = end - timedelta(days=n_days * 3)
         return start.strftime("%Y%m%d")
