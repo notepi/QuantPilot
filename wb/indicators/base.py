@@ -17,10 +17,19 @@ class IndicatorResult:
     value: float                 # 计算值
     weight: float                # 权重
     unit: str = "pct"            # 单位
-    direction: str = "higher_better"  # 方向：higher_better 或 lower_better
+    direction: str = "higher_better"  # 方向：higher_better, lower_better, 或 sweet_spot
+
+    # 线性评分阈值（higher_better / lower_better）
     threshold_exceed: Optional[float] = None   # 超预期阈值
     threshold_meet: Optional[float] = None     # 符合预期阈值
     threshold_below: Optional[float] = None    # 低于预期阈值
+
+    # 甜蜜区间评分阈值（sweet_spot）
+    threshold_sweet_low: Optional[float] = None      # 甜蜜区间下限
+    threshold_sweet_high: Optional[float] = None     # 甜蜜区间上限（健康跑赢边界）
+    threshold_overheat_low: Optional[float] = None   # 过热区间下限（轻度超涨边界）
+    threshold_overheat_high: Optional[float] = None  # 过热区间上限
+
     expectation: str = ""        # 预期判定结果
     trade_date: str = ""         # 计算日期（报告日期）
     data_date: str = ""          # 实际数据日期（数据最新可得日期）
@@ -28,6 +37,11 @@ class IndicatorResult:
 
     def evaluate_expectation(self) -> str:
         """评估预期结果"""
+        # 甜蜜区间评分模式
+        if self.direction == "sweet_spot":
+            return self._evaluate_sweet_spot()
+
+        # 线性评分模式（higher_better / lower_better）
         if self.threshold_exceed is not None:
             if self.direction == "higher_better":
                 if self.value >= self.threshold_exceed:
@@ -36,7 +50,7 @@ class IndicatorResult:
                     return "符合预期"
                 else:
                     return "低于预期"
-            else:
+            else:  # lower_better
                 if self.value <= self.threshold_exceed:
                     return "超预期"
                 elif self.value <= self.threshold_meet:
@@ -44,6 +58,35 @@ class IndicatorResult:
                 else:
                     return "低于预期"
         return "未设定阈值"
+
+    def _evaluate_sweet_spot(self) -> str:
+        """甜蜜区间评分逻辑
+
+        适用于"适度最好"的指标，如相对强度：
+        - 跑输不好
+        - 适度跑赢最好（甜蜜区间）
+        - 超涨太多也不好（过热风险）
+
+        评分区间：
+        - < threshold_sweet_low: 低于预期（跑输基准）
+        - [threshold_sweet_low, threshold_sweet_high]: 超预期（健康跑赢）
+        - (threshold_sweet_high, threshold_overheat_low]: 符合预期（轻度超涨）
+        - > threshold_overheat_low: 符合预期（明显过热）
+        """
+        if self.threshold_sweet_low is None or self.threshold_sweet_high is None:
+            return "未设定阈值"
+
+        # 跑输基准
+        if self.value < self.threshold_sweet_low:
+            return "低于预期"
+
+        # 健康跑赢（甜蜜区间）
+        elif self.value <= self.threshold_sweet_high:
+            return "超预期"
+
+        # 超涨区域（统一归为"符合预期"）
+        else:
+            return "符合预期"
 
     def to_dict(self) -> dict:
         """转换为字典"""
@@ -91,10 +134,18 @@ class BaseIndicator(ABC):
     name: str = ""
     weight: float = 0.0
     unit: str = "pct"
-    direction: str = "higher_better"
+    direction: str = "higher_better"  # higher_better, lower_better, 或 sweet_spot
+
+    # 线性评分阈值
     threshold_exceed: Optional[float] = None
     threshold_meet: Optional[float] = None
     threshold_below: Optional[float] = None
+
+    # 甜蜜区间评分阈值
+    threshold_sweet_low: Optional[float] = None      # 甜蜜区间下限
+    threshold_sweet_high: Optional[float] = None     # 甜蜜区间上限
+    threshold_overheat_low: Optional[float] = None   # 过热区间下限
+    threshold_overheat_high: Optional[float] = None  # 过热区间上限
 
     def __init__(self, data_fetcher=None):
         """
@@ -158,6 +209,10 @@ class BaseIndicator(ABC):
             threshold_exceed=self.threshold_exceed,
             threshold_meet=self.threshold_meet,
             threshold_below=self.threshold_below,
+            threshold_sweet_low=self.threshold_sweet_low,
+            threshold_sweet_high=self.threshold_sweet_high,
+            threshold_overheat_low=self.threshold_overheat_low,
+            threshold_overheat_high=self.threshold_overheat_high,
             trade_date=trade_date,
             data_date=data_date,
             raw_data=raw_data,

@@ -1,7 +1,7 @@
 {
   "phase": "第一阶段",
   "trade_date": "20260616",
-  "total_score": 0.5619999999999999,
+  "total_score": 0.532,
   "expectation_level": "低于预期",
   "indicator_results": [
     {
@@ -61,7 +61,7 @@
       "code": "S1-03",
       "name": "ETF相对强度",
       "value": 0.0356760148955947,
-      "weight": 0.2,
+      "weight": 0.1,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "符合预期",
@@ -248,7 +248,28 @@
         "etf_window_dates_count": 11,
         "insufficient_data": false
       }
+    },
+    {
+      "code": "S1-07",
+      "name": "科创板相对强度",
+      "value": -0.08568588286190304,
+      "weight": 0.1,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "低于预期",
+      "trade_date": "20260616",
+      "data_date": "20260616",
+      "raw_data": {
+        "etf_return": -0.04413619167717532,
+        "benchmark_return": 0.04154969118472772,
+        "common_dates_count": 11,
+        "etf_start_close": 0.793,
+        "etf_end_close": 0.758,
+        "benchmark_start_close": 1.781,
+        "benchmark_end_close": 1.855,
+        "insufficient_data": false
+      }
     }
   ],
-  "summary": "综合得分 0.56，整体表现低于预期。6项有效指标中：超预期0项，符合预期3项，低于预期3项。主要特征：ETF份额变化需关注、成交放大持续性需关注、板块广度修复需关注。"
+  "summary": "综合得分 0.53，整体表现低于预期。7项有效指标中：超预期0项，符合预期3项，低于预期4项。主要特征：ETF份额变化需关注、成交放大持续性需关注、板块广度修复需关注。"
 }

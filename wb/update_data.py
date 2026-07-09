@@ -515,7 +515,7 @@ def update_fund_daily_incremental():
 
     today = datetime.now().strftime("%Y%m%d")
 
-    for ts_code in [ETF_CODE, BENCHMARK_CODE, "159567.SZ"]:
+    for ts_code in [ETF_CODE, BENCHMARK_CODE, "159567.SZ", "588000.SH"]:
         local_dates = get_local_dates("fund_daily.csv", ts_code)
 
         # 确定起始日期
@@ -523,6 +523,9 @@ def update_fund_daily_incremental():
             start = ETF_START_DATE
         elif ts_code == "159567.SZ":
             # 港股创新药ETF
+            start = "20240101"
+        elif ts_code == "588000.SH":
+            # 科创50ETF
             start = "20240101"
         else:
             # 基准ETF更早，从2024年开始

@@ -223,3 +223,5 @@ ts_code,trade_date,fd_share,fund_type,market,source
 589720.SH,20260703,383082.3,ETF,SH,sse_fund_etf_scale
 589720.SH,20260706,391082.3,ETF,SH,sse_fund_etf_scale
 589720.SH,20260707,373582.3,ETF,SH,sse_fund_etf_scale
+589720.SH,20260708,369782.3,ETF,SH,sse_fund_etf_scale
+589720.SH,20260709,369782.3008,,,eastmoney_fund_etf_spot_em

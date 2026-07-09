@@ -8,6 +8,7 @@ from .s1_03_relative_strength import S1_03RelativeStrength
 from .s1_04_volume_ratio import S1_04VolumeRatio
 from .s1_05_breadth_repair import S1_05BreadthRepair
 from .s1_06_leader_strength import S1_06LeaderStrength
+from .s1_07_tech_strength import S1_07TechStrength
 
 __all__ = [
     "BaseIndicator",
@@ -18,6 +19,7 @@ __all__ = [
     "S1_04VolumeRatio",
     "S1_05BreadthRepair",
     "S1_06LeaderStrength",
+    "S1_07TechStrength",
 ]
 
 # 指标注册表
@@ -28,4 +30,5 @@ INDICATORS = {
     "S1-04": S1_04VolumeRatio,
     "S1-05": S1_05BreadthRepair,
     "S1-06": S1_06LeaderStrength,
+    "S1-07": S1_07TechStrength,
 }

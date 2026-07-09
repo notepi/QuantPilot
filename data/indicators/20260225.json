@@ -1,7 +1,7 @@
 {
   "phase": "第一阶段",
   "trade_date": "20260225",
-  "total_score": 0.4,
+  "total_score": 0.43,
   "expectation_level": "低于预期",
   "indicator_results": [
     {
@@ -61,7 +61,7 @@
       "code": "S1-03",
       "name": "ETF相对强度",
       "value": -0.010228143584932323,
-      "weight": 0.2,
+      "weight": 0.1,
       "unit": "pct",
       "direction": "higher_better",
       "expectation": "低于预期",
@@ -246,7 +246,28 @@
         "etf_window_dates_count": 11,
         "insufficient_data": false
       }
+    },
+    {
+      "code": "S1-07",
+      "name": "科创板相对强度",
+      "value": 0.0019979221609526107,
+      "weight": 0.1,
+      "unit": "pct",
+      "direction": "higher_better",
+      "expectation": "符合预期",
+      "trade_date": "20260225",
+      "data_date": "20260225",
+      "raw_data": {
+        "etf_return": 0.004581901489117988,
+        "benchmark_return": 0.002583979328165377,
+        "common_dates_count": 11,
+        "etf_start_close": 0.873,
+        "etf_end_close": 0.877,
+        "benchmark_start_close": 1.548,
+        "benchmark_end_close": 1.552,
+        "insufficient_data": false
+      }
     }
   ],
-  "summary": "综合得分 0.40，整体表现低于预期。6项有效指标中：超预期0项，符合预期0项，低于预期6项。主要特征：资金回流连续性需关注、ETF份额变化需关注、ETF相对强度需关注。"
+  "summary": "综合得分 0.43，整体表现低于预期。7项有效指标中：超预期0项，符合预期1项，低于预期6项。主要特征：资金回流连续性需关注、ETF份额变化需关注、ETF相对强度需关注。"
 }

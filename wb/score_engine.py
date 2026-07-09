@@ -1,7 +1,7 @@
 """
 指标评分与综合评价引擎
 
-整合6个第一阶段指标，计算加权综合得分
+整合7个第一阶段指标，计算加权综合得分
 """
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -139,9 +139,15 @@ class ScoreEngine:
             (score, insufficient_count): 综合得分和数据不足指标数
 
         各指标得分计算规则：
-        - 超预期: 1.0
-        - 符合预期: 0.7
-        - 低于预期: 0.4
+        - 线性评分（higher_better / lower_better）：
+          - 超预期: 1.0
+          - 符合预期: 0.7
+          - 低于预期: 0.4
+        - 甜蜜区间评分（sweet_spot）：
+          - 跑输基准: 0.4
+          - 健康跑赢: 1.0
+          - 轻度超涨: 0.85
+          - 明显过热: 0.7
         - 未设定阈值: 0.5
         - 数据不足: 不参与评分
         """
@@ -156,17 +162,14 @@ class ScoreEngine:
                 continue  # 跳过，不参与评分
 
             weight = result.weight
-
-            # 根据预期等级计算得分
             expectation = result.expectation or result.evaluate_expectation()
-            if expectation == "超预期":
-                score = 1.0
-            elif expectation == "符合预期":
-                score = 0.7
-            elif expectation == "低于预期":
-                score = 0.4
+
+            # 甜蜜区间精细化评分
+            if result.direction == "sweet_spot":
+                score = self._get_sweet_spot_score(result)
             else:
-                score = 0.5  # 未设定阈值或计算失败
+                # 线性评分
+                score = self._get_linear_score(expectation)
 
             weighted_sum += score * weight
             total_weight += weight
@@ -174,6 +177,44 @@ class ScoreEngine:
         # 剩余指标权重归一化
         final_score = weighted_sum / total_weight if total_weight > 0 else 0.0
         return final_score, insufficient_count
+
+    def _get_sweet_spot_score(self, result: IndicatorResult) -> float:
+        """甜蜜区间精细化评分
+
+        评分逻辑：
+        - < threshold_sweet_low: 0.4 (跑输基准)
+        - [threshold_sweet_low, threshold_sweet_high]: 1.0 (健康跑赢)
+        - (threshold_sweet_high, threshold_overheat_low]: 0.85 (轻度超涨)
+        - > threshold_overheat_low: 0.7 (明显过热)
+        """
+        value = result.value
+
+        # 跑输基准
+        if value < result.threshold_sweet_low:
+            return 0.4
+
+        # 健康跑赢（甜蜜区间）
+        elif value <= result.threshold_sweet_high:
+            return 1.0
+
+        # 轻度超涨
+        elif result.threshold_overheat_low and value <= result.threshold_overheat_low:
+            return 0.85
+
+        # 明显过热
+        else:
+            return 0.7
+
+    def _get_linear_score(self, expectation: str) -> float:
+        """线性评分"""
+        if expectation == "超预期":
+            return 1.0
+        elif expectation == "符合预期":
+            return 0.7
+        elif expectation == "低于预期":
+            return 0.4
+        else:
+            return 0.5  # 未设定阈值或计算失败
 
     def _evaluate_expectation_level(self, total_score: float) -> str:
         """评定综合预期等级"""

@@ -20,15 +20,17 @@ INDICATOR_NAMES = {
     "S1-04": "成交放大",
     "S1-05": "广度修复",
     "S1-06": "龙头先行",
+    "S1-07": "科创强度",
 }
 
 INDICATOR_WEIGHTS = {
     "S1-01": 0.22,
     "S1-02": 0.18,
-    "S1-03": 0.20,
+    "S1-03": 0.10,
     "S1-04": 0.14,
     "S1-05": 0.14,
     "S1-06": 0.12,
+    "S1-07": 0.10,
 }
 
 
@@ -125,8 +127,8 @@ def generate_report() -> str:
     lines.append("")
 
     # 表头
-    header = "| 日期 | S1-01 | S1-02 | S1-03 | S1-04 | S1-05 | S1-06 | 综合得分 | 预期等级 |"
-    separator = "|------|-------|-------|-------|-------|-------|-------|----------|----------|"
+    header = "| 日期 | S1-01 | S1-02 | S1-03 | S1-04 | S1-05 | S1-06 | S1-07 | 综合得分 | 预期等级 |"
+    separator = "|------|-------|-------|-------|-------|-------|-------|-------|----------|----------|"
     lines.append(header)
     lines.append(separator)
 
@@ -134,7 +136,7 @@ def generate_report() -> str:
     for _, row in df.iterrows():
         date_str = row["日期"]
         values = []
-        for code in ["S1-01", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06"]:
+        for code in ["S1-01", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06", "S1-07"]:
             val = row.get(code, 0)
             exp = row.get(f"{code}_预期", "未知")
             raw_data = row.get(f"{code}_raw_data")
@@ -169,10 +171,11 @@ def generate_report() -> str:
     lines.append("|------|------|------|------|")
     lines.append("| S1-01 | 资金回流连续性 | 22% | 近10日份额增加天数占比，≥70%超预期 |")
     lines.append("| S1-02 | ETF份额变化 | 18% | 近10日份额变化率，≥3%超预期 |")
-    lines.append("| S1-03 | ETF相对强度 | 20% | 589720收益-159557收益，≥5%超预期 |")
+    lines.append("| S1-03 | ETF相对强度 | 10% | 589720收益-159557收益，≥5%超预期 |")
     lines.append("| S1-04 | 成交放大持续性 | 14% | 5日均/20日均成交额，≥1.5x超预期 |")
     lines.append("| S1-05 | 板块广度修复 | 14% | 成分股站上20日均线占比，≥60%超预期 |")
     lines.append("| S1-06 | 龙头先行强度 | 12% | 龙头组合收益-ETF收益，≥5%超预期 |")
+    lines.append("| S1-07 | 科创板相对强度 | 10% | 589720收益-588000收益，≥5%超预期 |")
     lines.append("")
 
     # 表格3：评分规则
@@ -205,7 +208,7 @@ def generate_report() -> str:
         best_val = -999
         worst_val = 999
 
-        for code in ["S1-01", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06"]:
+        for code in ["S1-01", "S1-02", "S1-03", "S1-04", "S1-05", "S1-06", "S1-07"]:
             val = latest.get(code, 0)
             exp = latest.get(f"{code}_预期", "")
             if exp == "超预期" and val > best_val:

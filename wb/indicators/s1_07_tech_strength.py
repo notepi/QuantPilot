@@ -1,11 +1,11 @@
 """
-S1-03: ETF相对强度（权重 0.10）
+S1-07: 科创板相对强度（权重 0.10）
 
-量化口径: 589720近10日收益 - 159557近10日收益
+量化口径: 589720近10日收益 - 588000近10日收益
 
 数据源: fund_daily（ETF日线行情）
-- 589720.SH: 目标ETF
-- 159557.SZ: 基准ETF（替代HSHCI）
+- 589720.SH: 目标ETF（创新药ETF）
+- 588000.SH: 基准ETF（科创50ETF）
 """
 from typing import Optional
 import pandas as pd
@@ -13,18 +13,18 @@ import pandas as pd
 from .base import BaseIndicator, IndicatorResult
 
 
-class S1_03RelativeStrength(BaseIndicator):
-    """ETF相对强度指标
+class S1_07TechStrength(BaseIndicator):
+    """科创板相对强度指标
 
     评分模式：甜蜜区间（sweet_spot）
-    - 跑输基准（< 0%）：不好
-    - 健康跑赢（0% - 12%）：最好
-    - 轻度超涨（12% - 18%）：需关注
-    - 明显过热（> 18%）：透支风险
+    - 跑输科创50（< 0%）：不好
+    - 健康跑赢（0% - 8%）：最好
+    - 轻度超涨（8% - 15%）：需关注
+    - 明显过热（> 15%）：透支风险
     """
 
-    code = "S1-03"
-    name = "ETF相对强度"
+    code = "S1-07"
+    name = "科创板相对强度"
     weight = 0.10
     unit = "pct"
 
@@ -33,22 +33,22 @@ class S1_03RelativeStrength(BaseIndicator):
 
     # 甜蜜区间阈值
     threshold_sweet_low = 0.0      # 跑输临界点
-    threshold_sweet_high = 0.12    # 健康跑赢上限
-    threshold_overheat_low = 0.18  # 过热临界点
+    threshold_sweet_high = 0.08    # 健康跑赢上限
+    threshold_overheat_low = 0.15  # 过热临界点
 
     ETF_CODE = "589720.SH"
-    BENCHMARK_CODE = "159557.SZ"
+    BENCHMARK_CODE = "588000.SH"
     LOOKBACK_DAYS = 10
 
     def calculate(self, trade_date: Optional[str] = None, **kwargs) -> IndicatorResult:
         """
-        计算ETF相对强度
+        计算科创板相对强度
 
         Args:
             trade_date: 交易日期，格式 YYYYMMDD
 
         Returns:
-            IndicatorResult: 589720收益 - 基准收益
+            IndicatorResult: 589720收益 - 588000收益
         """
         if not self.data_fetcher:
             raise ValueError("data_fetcher 未设置")
