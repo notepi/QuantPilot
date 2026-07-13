@@ -125,7 +125,7 @@ def _fetch_tencent_hk_stock(ticker: str, limit: int = 260, timeout: int = 15) ->
     return _ensure_pct_chg(result[HK_DAILY_FIELDS].dropna(subset=["trade_date", "close"]))
 
 
-def _fetch_citydata_fund_daily(symbol: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
+def _fetch_tushare_fund_daily(symbol: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
     pro = citydata_pro_api()
     ts_code = symbol if symbol.endswith(".SZ") or symbol.endswith(".SH") else f"{symbol}.SZ"
     end = end_date or datetime.now().strftime("%Y%m%d")
@@ -139,14 +139,14 @@ def _fetch_citydata_fund_daily(symbol: str, start_date: str | None = None, end_d
     return df
 
 
-def _fetch_citydata_fund_daily_checked(symbol: str, expected_trade_date: str | None = None) -> pd.DataFrame:
-    df = _fetch_citydata_fund_daily(f"{symbol}.SZ")
+def _fetch_tushare_fund_daily_checked(symbol: str, expected_trade_date: str | None = None) -> pd.DataFrame:
+    df = _fetch_tushare_fund_daily(f"{symbol}.SZ")
     if df.empty:
         return df
     expected = expected_trade_date or datetime.now().strftime("%Y%m%d")
     latest = str(df["trade_date"].max())
     if latest < expected:
-        raise ValueError(f"citydata stale for {symbol}: latest={latest}, expected={expected}")
+        raise ValueError(f"tushare stale for {symbol}: latest={latest}, expected={expected}")
     return df
 
 
@@ -240,9 +240,9 @@ def update_s2_market_data() -> dict[str, object]:
     """Backward-compatible entry point for the S2 observation updater."""
     expected_trade_date = datetime.now().strftime("%Y%m%d")
     observation = update_hk_observation(
-        fetcher=lambda symbol: _fetch_citydata_fund_daily_checked(symbol, expected_trade_date),
+        fetcher=lambda symbol: _fetch_tushare_fund_daily_checked(symbol, expected_trade_date),
         fallback_fetcher=_fetch_tencent_etf_daily,
-        primary_source_name="citydata_fund_daily",
+        primary_source_name="tushare_fund_daily",
         fallback_source_name="tencent_fqkline",
     )
     hk_daily = update_hk_daily()

@@ -273,11 +273,7 @@ def fetch_fund_daily(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
 
 def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
     """
-    获取ETF份额数据：上交所（主源）→ 东方财富（备用）
-
-    数据源优先级：
-    1. 上交所 fund_etf_scale_sse（主源，数据完整）
-    2. 东方财富 fund_etf_spot_em（备用，仅当天数据）
+    获取ETF份额数据（tushare 直连）
 
     Args:
         ts_code: ETF代码
@@ -285,142 +281,29 @@ def fetch_fund_share(ts_code: str, start_date: str, end_date: str) -> pd.DataFra
         end_date: 结束日期 (YYYYMMDD)
 
     Returns:
-        DataFrame (已过滤)
-    """
-    frames = []
-
-    # 1. 主源：上交所（沪市 ETF）
-    if ts_code.endswith(".SH"):
-        try:
-            sse_df = fetch_fund_share_sse(ts_code, start_date, end_date)
-            if sse_df is not None and len(sse_df) > 0:
-                frames.append(sse_df)
-                print(f"  {ts_code}: 上交所获取份额数据成功 ({len(sse_df)} 条)")
-        except Exception as e:
-            print(f"  {ts_code}: 上交所份额获取失败: {e}")
-
-    # 2. 备用源：东方财富（补充缺失数据）
-    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    latest = str(combined["trade_date"].max()) if not combined.empty and "trade_date" in combined.columns else ""
-
-    if latest < end_date:
-        try:
-            em_df = fetch_fund_share_em(ts_code)
-            if em_df is not None and len(em_df) > 0:
-                em_date = str(em_df["trade_date"].iloc[0]) if "trade_date" in em_df.columns else ""
-                if em_date and em_date >= start_date and em_date <= end_date and em_date > latest:
-                    frames.append(em_df)
-                    print(f"  {ts_code}: 东方财富补充份额数据成功 (日期={em_date})")
-        except Exception as e:
-            print(f"  {ts_code}: 东方财富份额获取失败: {e}")
-
-    if not frames:
-        return pd.DataFrame()
-
-    combined = pd.concat(frames, ignore_index=True)
-    combined["trade_date"] = combined["trade_date"].astype(str)
-    combined = combined[(combined["trade_date"] >= start_date) & (combined["trade_date"] <= end_date)]
-    # 去重：同 ts_code + trade_date 只保留最后一条（备用源覆盖主源）
-    if "ts_code" in combined.columns and "trade_date" in combined.columns:
-        combined = combined.drop_duplicates(subset=["ts_code", "trade_date"], keep="last")
-    return combined
-
-
-def fetch_fund_share_em(ts_code: str) -> pd.DataFrame:
-    """从东方财富获取当天份额数据（fund_etf_spot_em）
-
-    注意：该接口只返回最新一条数据，没有历史区间。
-
-    Args:
-        ts_code: ETF代码，如 "589720.SH"
-
-    Returns:
         DataFrame 包含 ts_code, trade_date, fd_share, source 字段
     """
-    try:
-        import akshare as ak
-    except ImportError:
-        print(f"  {ts_code}: akshare不可用，跳过东方财富份额获取")
-        return pd.DataFrame()
+    pro = citydata_pro_api()
 
-    code = ts_code.split(".")[0]
     try:
-        df = ak.fund_etf_spot_em()
+        df = pro.fund_share(ts_code=ts_code, start_date=start_date, end_date=end_date)
     except Exception as e:
-        print(f"  {ts_code}: 东方财富 fund_etf_spot_em 调用失败: {e}")
+        print(f"  {ts_code}: tushare fund_share 获取失败: {e}")
         return pd.DataFrame()
 
     if df is None or len(df) == 0:
         return pd.DataFrame()
 
-    df["代码"] = df["代码"].astype(str)
-    hit = df[df["代码"] == code]
+    # 标准化字段
+    df = df.copy()
+    df["trade_date"] = df["trade_date"].astype(str)
+    df["source"] = "tushare_fund_share"
 
-    if len(hit) == 0:
-        return pd.DataFrame()
+    # 过滤日期范围
+    df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)]
 
-    row = hit.iloc[0]
-    # 数据日期格式可能是 "20260622" 或 "2026-06-22"
-    raw_date = str(row.get("数据日期", ""))
-    trade_date = raw_date[:10].replace("-", "")
-
-    share_raw = row.get("最新份额")
-    if share_raw is None or share_raw == "" or share_raw == "-":
-        return pd.DataFrame()
-
-    try:
-        fd_share = float(share_raw) / 10000  # 转为万份
-    except (ValueError, TypeError):
-        return pd.DataFrame()
-
-    return pd.DataFrame([{
-        "ts_code": ts_code,
-        "trade_date": trade_date,
-        "fd_share": fd_share,
-        "source": "eastmoney_fund_etf_spot_em",
-    }])
-
-
-def fetch_fund_share_sse(ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
-    """从上交所 ETF 规模接口补充沪市 ETF 份额，fd_share 统一为万份。"""
-    try:
-        import akshare as ak
-    except Exception as e:
-        print(f"  {ts_code}: akshare不可用，跳过SSE fund_share fallback: {e}")
-        return pd.DataFrame()
-
-    code = ts_code.split(".")[0]
-    rows = []
-    for date in pd.date_range(start=start_date, end=end_date, freq="D"):
-        date_str = date.strftime("%Y%m%d")
-        try:
-            scale = ak.fund_etf_scale_sse(date=date_str)
-        except Exception:
-            continue
-        required = {"基金代码", "统计日期", "基金份额"}
-        if scale is None or len(scale) == 0 or not required.issubset(scale.columns):
-            continue
-        scale["基金代码"] = scale["基金代码"].astype(str).str.zfill(6)
-        hit = scale[scale["基金代码"] == code]
-        if hit.empty:
-            continue
-        share = pd.to_numeric(hit.iloc[0]["基金份额"], errors="coerce")
-        if pd.isna(share):
-            continue
-        rows.append(
-            {
-                "ts_code": ts_code,
-                "trade_date": str(hit.iloc[0]["统计日期"]).replace("-", ""),
-                "fd_share": float(share) / 10000.0,
-                "fund_type": "ETF",
-                "market": "SH",
-                "source": "sse_fund_etf_scale",
-            }
-        )
-
-    if rows:
-        print(f"  {ts_code}: SSE fallback补充 {len(rows)} 条fund_share")
-    return pd.DataFrame(rows)
+    print(f"  {ts_code}: tushare获取份额数据成功 ({len(df)} 条)")
+    return df[["ts_code", "trade_date", "fd_share", "source"]]
 
 
 def fetch_daily(ts_codes: list, start_date: str, end_date: str) -> pd.DataFrame:

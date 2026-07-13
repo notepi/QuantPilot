@@ -159,9 +159,9 @@ def _normalise_citydata(df: pd.DataFrame, symbol: str, source_api: str, asset_ty
     result["symbol"] = symbol
     for dst, src in [("open", "open"), ("high", "high"), ("low", "low"), ("close", "close"), ("pct_chg", "pct_chg"), ("volume", "vol"), ("amount", "amount")]:
         result[dst] = pd.to_numeric(df[src], errors="coerce") if src in df.columns else ""
-    result["source_name"] = "citydata"
+    result["source_name"] = "tushare"
     result["source_api"] = source_api
-    result["source_url"] = "https://tushare.citydata.club"
+    result["source_url"] = "https://tushare.pro"
     result["adjusted_type"] = "none"
     result["fetched_at"] = _now()
     result["source_status"] = "success"
