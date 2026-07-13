@@ -1,10 +1,12 @@
-attempted_at=2026-07-07T17:05:11
+attempted_at=2026-07-14T00:41:08
 status=valid
-data_source=citydata_fund_daily
+data_source=tencent_fqkline
 primary_source=citydata_fund_daily
-primary_source_status=success
-primary_source_error=
+primary_source_status=failed
+primary_source_error=159567: ValueError: citydata stale for 159567: latest=20260713, expected=20260714；159557: ValueError: citydata stale for 159557: latest=20260713, expected=20260714
 fallback_source=tencent_fqkline
-fallback_source_status=not_used
+fallback_source_status=success
 fallback_source_error=
-final_data_source=citydata_fund_daily
+final_data_source=tencent_fqkline
+error=citydata_fund_daily/159567: ValueError: citydata stale for 159567: latest=20260713, expected=20260714
+error=citydata_fund_daily/159557: ValueError: citydata stale for 159557: latest=20260713, expected=20260714

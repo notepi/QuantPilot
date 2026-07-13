@@ -1,7 +1,7 @@
 # 创新药 S2 产业验证日报
 
-**报告日期**: 2026-07-07
-**S1交易日**: 20260707
+**报告日期**: 2026-07-13
+**S1交易日**: 20260713
 **输出范围**: 独立 S2 模块，不修改 S1 日报
 **版本状态**: 数据治理后试运行版，行情层已接入 audit，但部分解释标签仍在迭代校验。
 **港股观察标的**: 159567.SZ 港股创新药ETF
@@ -17,6 +17,9 @@
 
 | 日期 | S2-01 | S2-02 | S2-03a | S2-03b | S2-04 | S2-05 | S2综合 | 等级 |
 |------|-------|-------|--------|--------|-------|-------|--------|------|
+| 2026-07-13 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
+| 2026-07-09 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
+| 2026-07-08 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
 | 2026-07-07 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
 | 2026-07-06 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
 | 2026-07-03 | 0.75 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.50 ⚪ | 0.50 ⚪ | 0.60 | 🟡 符合预期 |
@@ -34,9 +37,6 @@
 | 2026-06-12 | 0.70 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.40 🔴 | 0.70 🟡 | 0.61 | 🟡 符合预期 |
 | 2026-06-11 | 0.70 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.40 🔴 | 0.70 🟡 | 0.61 | 🟡 符合预期 |
 | 2026-06-10 | 0.70 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.40 🔴 | 0.70 🟡 | 0.61 | 🟡 符合预期 |
-| 2026-06-09 | 0.70 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.40 🔴 | 0.70 🟡 | 0.61 | 🟡 符合预期 |
-| 2026-06-08 | 0.70 🟡 | 0.70 🟡 | 0.65 🟡 | 0.50 ⚪ | 0.40 🔴 | 0.70 🟡 | 0.61 | 🟡 符合预期 |
-| 2026-06-06 | 0.70 🟡 | 0.70 🟡 | - | - | 0.40 🔴 | 0.40 🔴 | 0.54 | 🔴 低于预期 |
 
 **图例**: 🟢 超预期 (≥0.80) | 🟡 符合预期 (0.60-0.80) | 🔴 低于预期 (<0.60) | ⚪ 数据缺失
 
@@ -54,29 +54,29 @@
 ## 一、今日结论
 
 - 港股观察标的：159567.SZ 港股创新药ETF。
-- A股温度计状态：589720.SH S1=1.00，状态为强；S1最新日期 20260707，综合得分 1.00，等级 超预期；S1-02=100.88%，S1-05=73.33%，S1-06=13.11%。
+- A股温度计状态：589720.SH S1=0.85，状态为强；S1最新日期 20260713，综合得分 0.85，等级 超预期；S1-02=84.32%，S1-05=60.00%，S1-06=4.41%。
 - s1_structure_quality = normal；s1_breadth_state = normal。
-- S1_score_contribution：flow_score_contribution=0.400；price_strength_contribution=0.200；volume_contribution=0.140；breadth_contribution=0.140；leader_contribution=0.120。
-- S1改善主要来自资金回流连续性、ETF份额变化、价格相对强度。
+- S1_score_contribution：flow_score_contribution=0.400；price_strength_contribution=0.040；volume_contribution=0.098；breadth_contribution=0.140；leader_contribution=0.084。
+- S1改善主要来自资金回流连续性、ETF份额变化、板块广度；但价格相对强度仍未确认。
 - S2正式量化等级：adjusted_score=0.60，等级为符合预期。
 - S2产业事件侧得分：S2_event_score=0.65，状态为符合预期。
 - S2交易转化侧得分：S2_conversion_score=0.50，状态为交易转化修复中，但未确认。
 - BD联动解释：BD频率与金额质量均符合预期，说明产业事件侧较前期改善；但该改善尚未通过S2-04和S2-05转化为交易确认。
-- HK_observation ETF观察：159567最近5个交易日跑赢159557 1.68%，说明港股创新药ETF强于港股医疗宽基。该观察不进入正式S2分。
+- HK_observation ETF观察：159567最近5个交易日跑赢159557 0.11%，说明港股创新药ETF强于港股医疗宽基。该观察不进入正式S2分。
 - 下一批S2-04事件将在暂无开始成熟，届时可开始观察临床事件5日交易转化。
 - 日间变化说明：产业事件侧与前一日持平；交易转化侧状态为交易转化修复中，但未确认。
 - S2解释性状态：一致预期验证缺数据；财报客观改善有效，但不能冒充超一致预期。
 - 港股观察层：159567 数据状态为 latest_valid；可判断相对强弱。
-- 综合客观状态：C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计强，S1=1.00；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
+- 综合客观状态：C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计强，S1=0.85；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
 
 - 产业事件状态：今日无新增重大产业事件，产业事件分沿用当前观察窗口。
-- 交易转化成熟度：S2-04 去重正式交易样本 9 个，raw成熟事件 10 个，历史观测 success_rate=22.22%，当前不再沿用，正式评级=数据缺失；S2-05 历史观测，当前不再沿用，正式评级=数据缺失。
+- 交易转化成熟度：S2-04 去重正式交易样本 8 个，raw成熟事件 9 个，历史观测 success_rate=25.00%，当前不再沿用，正式评级=数据缺失；S2-05 历史观测，当前不再沿用，正式评级=数据缺失。
 - S1/S2组合观察：S1/S2总分达到符合预期，但关键交易确认项仍未达标。
 - S2原始得分（raw_score）：0.69
 - S2置信度调整后得分（adjusted_score）：0.60
 - 正式口径可用权重：50%；缺失指标：3；待验证指标：0；含观察口径指标：0；过期沿用指标：2
-- 港股观察层：状态=latest_valid。citydata_fund_daily抓取成功。159567最近5个交易日跑赢159557 1.68%，说明港股创新药ETF强于港股医疗宽基。该观察层不进入 S2_total，也不改变 adjusted_score。
-- S1更新状态：S1指标已更新到 20260707；本地 589720.SH 行情最新交易日为 20260707；fund_share 最新披露日为 20260707。
+- 港股观察层：状态=latest_valid。数据源链路：primary=failed，fallback=success，final=tencent_fqkline。159567最近5个交易日跑赢159557 0.11%，说明港股创新药ETF强于港股医疗宽基。该观察层不进入 S2_total，也不改变 adjusted_score。
+- S1更新状态：S1指标已更新到 20260713；本地 589720.SH 行情最新交易日为 20260713；fund_share 最新披露日为 20260713。
 - 今日无新增重大产业事件，产业事件分沿用当前观察窗口。
 
 ### 正负因素摘要
@@ -84,16 +84,16 @@
 | 正面确认 | 负面确认 | 数据风险/不可确认 |
 | --- | --- | --- |
 | BD频率符合预期 | S2_conversion_score=0.50，修复但未确认 | S2-03b一致预期缺失 |
-| BD金额质量符合预期 | S2-04 success_rate=22.22% | S2-06商业化兑现低置信度 |
+| BD金额质量符合预期 | S2-04 success_rate=25.00% | S2-06商业化兑现低置信度 |
 | 产业事件侧得分0.65 | Policy_Risk_Layer=risk_up | - |
 | HK_observation=latest_valid | - | - |
-| S1-05=73.33%，normal | - | - |
+| S1-05=60.00%，normal | - | - |
 
 ## 二、今日变化
 
 | 项目 | 昨日 | 今日 | 变化 | 解释 |
 | --- | ---: | ---: | ---: | --- |
-| S1_total | 1.00 | 1.00 | +0.00 | 温度计修复 |
+| S1_total | 0.94 | 0.85 | -0.09 | 温度计修复 |
 | S2_adjusted | 0.60 | 0.60 | +0.00 | 产业事件侧与前一日持平；交易转化侧状态为交易转化修复中，但未确认。 |
 | S2_event_score | 0.65 | 0.65 | +0.00 | 产业事件侧符合预期 |
 | S2_conversion_score | 0.50 | 0.50 | +0.00 | 交易转化修复中，但未确认 |
@@ -104,11 +104,11 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| S1 | valid | 589720行情和指标更新到20260707 |
+| S1 | valid | 589720行情和指标更新到20260713 |
 | S2事件库 | valid | 今日新增0条确认事件 |
 | 事件去重检查 | 有待复核 | is_duplicate=true 的事件不进入正式统计 |
-| S2-04交易转化 | valid | raw_mature_event_count=10；deduped_trade_sample_count=9；0个事件未满5日 |
-| HK_observation | latest_valid | source=citydata_fund_daily；source_status=success->not_used；primary_source_status=success；fallback_source_status=not_used；latest_date_159567=20260707；latest_date_159557=20260707；common_trade_date=20260707；calendar_lag_days=0；trading_lag_days=0；report_day_price_available_externally=false；local_fetch_failed=false；data_fetch_failed=false |
+| S2-04交易转化 | valid | raw_mature_event_count=9；deduped_trade_sample_count=8；0个事件未满5日 |
+| HK_observation | latest_valid | source=tencent_fqkline；source_status=failed->success；primary_source_status=failed；fallback_source_status=success；latest_date_159567=20260713；latest_date_159557=20260713；common_trade_date=20260713；calendar_lag_days=0；trading_lag_days=0；report_day_price_available_externally=false；local_fetch_failed=false；data_fetch_failed=false |
 | S2-03a财报客观改善 | positive_low_sample | 财报客观改善为正，但样本不足且没有一致预期验证，不得称为超预期 |
 | S2-03b一致预期验证 | missing | 具备一致预期来源的业绩样本缺失 |
 | S2-06商业化兑现质量 | scorable_low_confidence | 商业化核心公司指标达到最低评分覆盖，但完整度或来源置信度偏低：6/6；关键字段完整度=50%；非官方/媒体来源样本=4；缺失字段保留missing |
@@ -118,26 +118,26 @@
 589720.SH 用于判断 A 股科创创新药资金是否确认，不代表 159567.SZ 的实时交易强弱。
 
 - A股创新药资金状态：强。
-- S1趋势状态：s1_weak_streak_days=0；s1_trend_state=温度计修复；s1_recent_direction=持平。
+- S1趋势状态：s1_weak_streak_days=0；s1_trend_state=温度计修复；s1_recent_direction=下降 -0.09。
 - s1_structure_quality = normal；s1_breadth_state = normal。
-- S1_score_contribution：flow_score_contribution=0.400；price_strength_contribution=0.200；volume_contribution=0.140；breadth_contribution=0.140；leader_contribution=0.120。
-- S1改善主要来自资金回流连续性、ETF份额变化、价格相对强度。
-- S1最新日期 20260707，综合得分 1.00，等级 超预期；S1-02=100.88%，S1-05=73.33%，S1-06=13.11%。
+- S1_score_contribution：flow_score_contribution=0.400；price_strength_contribution=0.040；volume_contribution=0.098；breadth_contribution=0.140；leader_contribution=0.084。
+- S1改善主要来自资金回流连续性、ETF份额变化、板块广度；但价格相对强度仍未确认。
+- S1最新日期 20260713，综合得分 0.85，等级 超预期；S1-02=84.32%，S1-05=60.00%，S1-06=4.41%。
 
 ### 最近 10 个交易日 S1
 
 | 日期 | S1综合得分 | S1等级 |
 | --- | ---: | --- |
-| 20260624 | 0.75 | 符合预期 |
-| 20260625 | 0.76 | 符合预期 |
-| 20260626 | 0.93 | 超预期 |
-| 20260629 | 0.93 | 超预期 |
-| 20260630 | 0.93 | 超预期 |
-| 20260701 | 0.93 | 超预期 |
-| 20260702 | 1.00 | 超预期 |
-| 20260703 | 1.00 | 超预期 |
-| 20260706 | 1.00 | 超预期 |
-| 20260707 | 1.00 | 超预期 |
+| 20260629 | 0.94 | 超预期 |
+| 20260630 | 0.94 | 超预期 |
+| 20260701 | 0.97 | 超预期 |
+| 20260702 | 0.95 | 超预期 |
+| 20260703 | 0.97 | 超预期 |
+| 20260706 | 0.97 | 超预期 |
+| 20260707 | 0.98 | 超预期 |
+| 20260708 | 0.96 | 超预期 |
+| 20260709 | 0.94 | 超预期 |
+| 20260713 | 0.85 | 超预期 |
 
 ## 五、第二层：S2_产业验证正式分
 
@@ -145,12 +145,12 @@ S2_total 只基于事件库、本地行情、589720.SH 与 A 股龙头池。S2_t
 
 | 指标 | 名称 | 指标值 | 状态 | raw_score | adjusted_score | 置信度 | 正式样本 | pending样本 | 正式计分状态 | 观察层样本 | 缺失原因 | 依据 |
 | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | --- | --- |
-| S2-01 | BD落地频率 | 1.78 | 超预期 | 1.00 | 0.75 | 0.75 | 4 | 0 | 正式评分 | 0 | - | 近90日重大BD 4 笔；前4个完整90日窗口 2/4/2/1 笔，单窗口均值 2.25 |
+| S2-01 | BD落地频率 | 1.78 | 超预期 | 1.00 | 0.75 | 0.75 | 4 | 0 | 正式评分 | 0 | - | 近90日重大BD 4 笔；前4个完整90日窗口 0/6/2/1 笔，单窗口均值 2.25 |
 | S2-02 | BD金额质量 | 143.96% | 符合预期 | 0.70 | 0.70 | 0.75 | 4 | 0 | 正式评分 | 0 | - | 近90日raw金额 1,799,500,000 USD；去年同期90日 1,250,000,000 USD；质量金额 1,980,700,000 USD |
 | S2-03a | 财报客观改善 | 100.00% | positive_low_sample | 1.00 | 0.65 | 0.60 | 1 | 0 | 正式评分 | 0 | - | 财报客观改善样本 1/1；仅基于同比、利润改善、亏损收窄、现金流/经营改善等客观项，不代表超一致预期；样本不足3个时不得写超预期 |
 | S2-03b | 一致预期验证 | 数据缺失 | 数据缺失 | 0.50 | 0.50 | 0.45 | 0 | 0 | 中性占位 | 0 | 具备一致预期来源的业绩样本缺失 | earnings_consensus.csv 无可靠一致预期来源；不得用同比增长冒充超预期 |
-| S2-04 | 数据催化转化率 | 数据缺失 | 数据缺失 | 0.50 | 0.50 | 0.45 | 9 | 0 | 中性占位 | 0 | 最近一次S2-04有效观测已超过5个交易日，不再沿用 | 正式口径：raw_mature_event_count=10；deduped_trade_sample_count=9；success_count=2；success_rate=22.22%；港股事件使用159557.SZ作宽基对照，A股事件使用589720.SH作温度计对照 |
-| S2-05 | 龙头接力强度 | 数据缺失 | 数据缺失 | 0.50 | 0.50 | 0.45 | 18 | 0 | 中性占位 | 0 | 最近一次S2-05有效观测已超过5个交易日，不再沿用 | 正式口径：核心催化后本地A股龙头池相对 589720.SH 的5日中位超额收益 0.78% |
+| S2-04 | 数据催化转化率 | 数据缺失 | 数据缺失 | 0.50 | 0.50 | 0.45 | 8 | 0 | 中性占位 | 0 | missing_price: 688192.SH本地行情缺失，成熟样本暂不进入S2-04正式得分；最近一次S2-04有效观测已超过5个交易日，不再沿用 | 正式口径：raw_mature_event_count=9；deduped_trade_sample_count=8；success_count=2；success_rate=25.00%；港股事件使用159557.SZ作宽基对照，A股事件使用589720.SH作温度计对照 |
+| S2-05 | 龙头接力强度 | 数据缺失 | 数据缺失 | 0.50 | 0.50 | 0.45 | 18 | 0 | 中性占位 | 0 | 最近一次S2-05有效观测已超过5个交易日，不再沿用 | 正式口径：核心催化后本地A股龙头池相对 589720.SH 的5日中位超额收益 -0.06% |
 
 ### 事件库状态
 
@@ -181,16 +181,16 @@ S2_total 只基于事件库、本地行情、589720.SH 与 A 股龙头池。S2_t
 ### S2-04 临床事件成熟度
 
 - S2-04_official_status：数据缺失。
-- S2-04_official_sample_count：9。
-- raw_mature_event_count：10。
-- deduped_trade_sample_count：9。
+- S2-04_official_sample_count：8。
+- raw_mature_event_count：9。
+- deduped_trade_sample_count：8。
 - success_count：2。
-- success_rate：22.22%。
+- success_rate：25.00%。
 - S2-04_hk_event_pending_count：1。
 - S2-04_hk_event_pending_or_missing_count：1。
 - HK_observation_status：159567 强于 159557。
 - 港股临床事件若本地 `s2/data/hk_daily.csv` 有完整个股价格，则进入 S2-04 正式样本；缺行情时列明缺失标的，不编造。
-- 成熟可计算样本：9；等待满 5 日：0；港股行情缺失/待补：0；本地价格缺失：0。
+- 成熟可计算样本：8；等待满 5 日：0；港股行情缺失/待补：0；本地价格缺失：1。
 - 下一批预计成熟日期：暂无。
 
 ### S2-04 待成熟事件日历
@@ -201,16 +201,16 @@ S2_total 只基于事件库、本地行情、589720.SH 与 A 股龙头池。S2_t
 
 | 公司 | 标的 | 事件日期 | benchmark_code | window_days | trade_sample_id | mature_date | days_to_mature | 已过交易日 | 状态 | stock_audit_status | benchmark_audit_status | stock_data_quality | benchmark_data_quality | stock_can_use_for_latest_signal | benchmark_can_use_for_latest_signal | 说明 | 是否进入去重正式分 |
 | --- | --- | --- | --- | ---: | --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 康方生物 | 9926.HK | 2026-05-26 | 159557.SZ | 5 | 09926.HK\|20260526\|159557.SZ\|5 | 已满5日 | 0 | 28/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 科伦博泰 | 6990.HK | 2026-05-29 | 159557.SZ | 5 | 06990.HK\|20260529\|159557.SZ\|5 | 已满5日 | 0 | 25/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 科伦博泰 | 6990.HK | 2026-05-29 | 159557.SZ | 5 | 06990.HK\|20260529\|159557.SZ\|5 | 已满5日 | 0 | 25/5 | mature_deduped_duplicate | passed | passed | latest_valid | latest_valid | true | true | 同一 stock_code + event_date + benchmark_code + window_days 已有正式交易样本，本项目仅保留明细 | 否 |
-| 康方生物 | 9926.HK | 2026-05-31 | 159557.SZ | 5 | 09926.HK\|20260531\|159557.SZ\|5 | 已满5日 | 0 | 24/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 迪哲医药 | 688192.SH | 2026-05-30 | 589720.SH | 5 | 688192.SH\|20260530\|589720.SH\|5 | 已满5日 | 0 | 25/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 康宁杰瑞 | 9966.HK | 2026-06-01 | 159557.SZ | 5 | 09966.HK\|20260601\|159557.SZ\|5 | 已满5日 | 0 | 24/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 先声再明 | 2096.HK | 2026-06-02 | 159557.SZ | 5 | 02096.HK\|20260602\|159557.SZ\|5 | 已满5日 | 0 | 23/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 亚盛医药 | 6855.HK | 2026-06-01 | 159557.SZ | 5 | 06855.HK\|20260601\|159557.SZ\|5 | 已满5日 | 0 | 24/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 科伦博泰 | 6990.HK | 2026-06-03 | 159557.SZ | 5 | 06990.HK\|20260603\|159557.SZ\|5 | 已满5日 | 0 | 22/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
-| 信达生物 | 01801.HK | 2026-06-04 | 159557.SZ | 5 | 01801.HK\|20260604\|159557.SZ\|5 | 已满5日 | 0 | 21/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 康方生物 | 9926.HK | 2026-05-26 | 159557.SZ | 5 | 09926.HK\|20260526\|159557.SZ\|5 | 已满5日 | 0 | 32/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 科伦博泰 | 6990.HK | 2026-05-29 | 159557.SZ | 5 | 06990.HK\|20260529\|159557.SZ\|5 | 已满5日 | 0 | 29/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 科伦博泰 | 6990.HK | 2026-05-29 | 159557.SZ | 5 | 06990.HK\|20260529\|159557.SZ\|5 | 已满5日 | 0 | 29/5 | mature_deduped_duplicate | passed | passed | latest_valid | latest_valid | true | true | 同一 stock_code + event_date + benchmark_code + window_days 已有正式交易样本，本项目仅保留明细 | 否 |
+| 康方生物 | 9926.HK | 2026-05-31 | 159557.SZ | 5 | 09926.HK\|20260531\|159557.SZ\|5 | 已满5日 | 0 | 28/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 迪哲医药 | 688192.SH | 2026-05-30 | 589720.SH | 5 | 688192.SH\|20260530\|589720.SH\|5 | 已满5日 | 0 | 29/5 | missing_price | passed | passed | latest_valid | latest_valid | true | true | 成熟但本地价格缺失，暂不进入正式S2-04 | 否 |
+| 康宁杰瑞 | 9966.HK | 2026-06-01 | 159557.SZ | 5 | 09966.HK\|20260601\|159557.SZ\|5 | 已满5日 | 0 | 28/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 先声再明 | 2096.HK | 2026-06-02 | 159557.SZ | 5 | 02096.HK\|20260602\|159557.SZ\|5 | 已满5日 | 0 | 27/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 亚盛医药 | 6855.HK | 2026-06-01 | 159557.SZ | 5 | 06855.HK\|20260601\|159557.SZ\|5 | 已满5日 | 0 | 28/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 科伦博泰 | 6990.HK | 2026-06-03 | 159557.SZ | 5 | 06990.HK\|20260603\|159557.SZ\|5 | 已满5日 | 0 | 26/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
+| 信达生物 | 01801.HK | 2026-06-04 | 159557.SZ | 5 | 01801.HK\|20260604\|159557.SZ\|5 | 已满5日 | 0 | 25/5 | mature_calculable | passed | passed | latest_valid | latest_valid | true | true | 成熟可算 | 是 |
 
 ### HK_observation ETF观察
 
@@ -220,9 +220,9 @@ S2_total 只基于事件库、本地行情、589720.SH 与 A 股龙头池。S2_t
 | 字段 | 数值 |
 | --- | ---: |
 | hk_observation_available | true |
-| hk_observation_return_159567 | 10.18% |
-| hk_observation_return_159557 | 8.50% |
-| hk_observation_excess_159567_vs_159557 | 1.68% |
+| hk_observation_return_159567 | -2.15% |
+| hk_observation_return_159557 | -2.26% |
+| hk_observation_excess_159567_vs_159557 | 0.11% |
 | hk_observation_excess_data_scope | latest_valid |
 
 ### S2-03a / S2-03b 业绩验证层
@@ -272,10 +272,10 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | --- | ---: |
 | 底层数据状态 | valid |
 | hk_observation_status | latest_valid |
-| latest_date_159567 | 20260707 |
-| latest_date_159557 | 20260707 |
-| common_trade_date | 20260707 |
-| report_trade_date | 20260707 |
+| latest_date_159567 | 20260713 |
+| latest_date_159557 | 20260713 |
+| common_trade_date | 20260713 |
+| report_trade_date | 20260713 |
 | lag_days_159567 | 0 |
 | lag_days_159557 | 0 |
 | calendar_lag_days | 0 |
@@ -283,36 +283,36 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | report_day_price_available_externally | false |
 | local_fetch_failed | false |
 | data_fetch_failed | false |
-| 数据源 | citydata_fund_daily |
-| primary_source_status | success |
-| fallback_source_status | not_used |
-| final_data_source | citydata_fund_daily |
+| 数据源 | tencent_fqkline |
+| primary_source_status | failed |
+| fallback_source_status | success |
+| final_data_source | tencent_fqkline |
 | 159567_audit_final_source | processed |
 | 159567_audit_final_source_reason | processed table has latest symbol row |
-| 159567_audit_fetched_at | 2026-07-07T17:05:25 |
+| 159567_audit_fetched_at | 2026-07-14T00:41:20 |
 | 159567_audit_data_quality | latest_valid |
 | 159567_audit_can_use_for_latest_signal | true |
 | 159567_audit_raw_latest_date | missing |
-| 159567_audit_cache_latest_date | 20260707 |
-| 159567_audit_processed_latest_date | 20260707 |
+| 159567_audit_cache_latest_date | 20260713 |
+| 159567_audit_processed_latest_date | 20260713 |
 | 159557_audit_final_source | processed |
 | 159557_audit_final_source_reason | processed table has latest symbol row |
-| 159557_audit_fetched_at | 2026-07-07T17:05:26 |
+| 159557_audit_fetched_at | 2026-07-14T00:41:21 |
 | 159557_audit_data_quality | latest_valid |
 | 159557_audit_can_use_for_latest_signal | true |
 | 159557_audit_raw_latest_date | missing |
-| 159557_audit_cache_latest_date | 20260707 |
-| 159557_audit_processed_latest_date | 20260707 |
+| 159557_audit_cache_latest_date | 20260713 |
+| 159557_audit_processed_latest_date | 20260713 |
 | 是否参与判断 | 是 |
-| 159567 1日收益 | -3.87% |
-| 159557 1日收益 | -3.14% |
-| 159567 - 159557 单日超额 | -0.73% |
-| 159567 5日收益 | 10.18% |
-| 159557 5日收益 | 8.50% |
-| 159567 - 159557 5日超额 | 1.68% |
-| 159567 10日收益 | 15.29% |
-| 159557 10日收益 | 13.91% |
-| 159567 - 159557 10日超额 | 1.39% |
+| 159567 1日收益 | -1.59% |
+| 159557 1日收益 | -1.54% |
+| 159567 - 159557 单日超额 | -0.04% |
+| 159567 5日收益 | -2.15% |
+| 159557 5日收益 | -2.26% |
+| 159567 - 159557 5日超额 | 0.11% |
+| 159567 10日收益 | 8.93% |
+| 159557 10日收益 | 6.44% |
+| 159567 - 159557 10日超额 | 2.49% |
 | 159567相对收益data_scope | latest_valid |
 | 原因 | 港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。 |
 
@@ -323,17 +323,17 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 
 | 项目 | 数值 |
 | --- | ---: |
-| 今日单日超额 | -0.73% |
+| 今日单日超额 | -0.04% |
 | 今日单日超额data_scope | latest_valid |
-| 今日5日超额 | 1.68% |
+| 今日5日超额 | 0.11% |
 | 今日5日超额data_scope | latest_valid |
-| 今日10日超额 | 1.39% |
+| 今日10日超额 | 2.49% |
 | 今日10日超额data_scope | latest_valid |
-| 共同交易日历史5日超额 | 1.68% |
+| 共同交易日历史5日超额 | 0.11% |
 | 共同交易日历史5日超额data_scope | latest_valid |
 | 连续跑输天数 | 0 |
-| 连续跑赢天数 | 5 |
-| 相对趋势状态 | 连续强于港股医疗宽基 |
+| 连续跑赢天数 | 1 |
+| 相对趋势状态 | 相对强弱未形成连续趋势 |
 
 ## 七、Policy_Risk_Layer 政策风险层
 
@@ -365,7 +365,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 | 科伦博泰 / sacituzumab tirumotecan (sac-TMT) OptiTROP-Lung05 | 6990.HK | high | mature_calculable | -14.85% | -6.02% | latest_valid | -8.49% | -2.48% | latest_valid |
 | 科伦博泰 / lunbotinib fumarate (A400/EP0031) | 6990.HK | high | mature_deduped_duplicate | -14.85% | -6.02% | latest_valid | -8.49% | -2.48% | latest_valid |
 | 康方生物 / ivonescimab HARMONi-6 | 9926.HK | high | mature_calculable | -20.41% | -10.18% | latest_valid | -11.68% | -1.50% | latest_valid |
-| 迪哲医药 / DZD6008 and golidocitinib plus anti-PD-1 | 688192.SH | medium | mature_calculable | -22.32% | -12.09% | latest_valid | -13.59% | -1.50% | latest_valid |
+| 迪哲医药 / DZD6008 and golidocitinib plus anti-PD-1 | 688192.SH | medium | missing_price | 数据缺失 | 数据缺失 | missing | 数据缺失 | -1.50% | latest_valid |
 | 康宁杰瑞 / anbenitamab (KN026) plus HB1801 | 9966.HK | high | mature_calculable | -19.78% | -9.55% | latest_valid | -11.06% | -1.50% | latest_valid |
 | 先声再明 / SIM0505 (CDH6 ADC) | 2096.HK | high | mature_calculable | -4.19% | 3.65% | latest_valid | 4.03% | 0.38% | latest_valid |
 | 亚盛医药 / olverembatinib (HQP1351) plus blinatumomab | 6855.HK | high | mature_calculable | -9.96% | 0.27% | latest_valid | -1.23% | -1.50% | latest_valid |
@@ -374,14 +374,14 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 
 ## 十二、第四层：final_view_客观状态汇总
 
-- C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计强，S1=1.00；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
+- C；C1；产业事件侧符合预期，BD频率与金额质量均符合预期；交易转化修复中，但未确认；A股温度计强，S1=0.85；latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。；政策风险升高
 - final_view_code = C
 - final_view_sub_code = C1
 - final_view_code_dict：A = 产业强 + 交易强；B = 产业中性 + 交易改善；C = 产业强 + 交易弱；D = 产业弱 + 交易弱；E = 数据不足 / 待验证。
 - final_view_sub_code_dict：C1 = 产业强 + 交易弱但有修复；C2 = 产业强 + 交易弱且恶化；C3 = 产业强 + 总分改善但关键确认项失败。
 - industry_event_state = 产业事件侧符合预期，BD频率与金额质量均符合预期
 - conversion_state = 交易转化修复中，但未确认
-- a_share_temperature_state = A股温度计强，S1=1.00
+- a_share_temperature_state = A股温度计强，S1=0.85
 - hk_observation_state = latest_valid，港股创新药 ETF 最近 5 个交易日强于港股医疗宽基。
 - hk_relative_state = 159567近5日强于159557
 - policy_risk_state = 政策风险升高
@@ -395,6 +395,7 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 ## 十三、数据缺失与待验证事项
 
 - 具备一致预期来源的业绩样本缺失
+- missing_price: 688192.SH本地行情缺失，成熟样本暂不进入S2-04正式得分
 - 最近一次S2-04有效观测已超过5个交易日，不再沿用
 - 最近一次S2-05有效观测已超过5个交易日，不再沿用
 
@@ -405,23 +406,23 @@ S2-03a 只判断财报客观改善；S2-03b 必须基于可靠一致预期来源
 ## 十五、客观观察条件
 
 ### 基本面条件
-- S1_total >= 0.60：满足，持平，当前1.00。
-- S1-02 份额变化 >= 0：满足，当前100.88%。
-- S1-05 板块广度 >= 40%：满足，当前73.33%。
+- S1_total >= 0.60：满足，走弱，当前0.85。
+- S1-02 份额变化 >= 0：满足，当前84.32%。
+- S1-05 板块广度 >= 40%：满足，当前60.00%。
 - S2_event_score >= 0.60：满足，持平，当前0.65。
 
 ### 交易转化条件
 - S2_conversion_score >= 0.60：未满足，交易转化修复中，但未确认，当前0.50。
-- S2-04 去重正式样本 >= 3：满足，当前9个；raw_mature_event_count=10。
-- S2-04 success_rate > 0：满足，success_count=2，success_rate=22.22%。
+- S2-04 去重正式样本 >= 3：满足，当前8个；raw_mature_event_count=9。
+- S2-04 success_rate > 0：满足，success_count=2，success_rate=25.00%。
 - S2-05 龙头接力中位超额收益 >= 0：未满足，方向未知，当前数据缺失。
 
 ### 持仓标的条件
 - 159567 vs 159557 同步行情：满足，HK_observation_status=latest_valid。
-- 159567 近5日强于159557：满足，最新判断超额=1.68%；共同交易日历史超额=1.68%。
+- 159567 近5日强于159557：满足，最新判断超额=0.11%；共同交易日历史超额=0.11%。
 
 ### 数据质量条件
-- HK日期同步：latest_date_159567=20260707；latest_date_159557=20260707；common_trade_date=20260707。
+- HK日期同步：latest_date_159567=20260713；latest_date_159557=20260713；common_trade_date=20260713。
 - S2-03b一致预期：missing；具备一致预期来源的业绩样本缺失。
 - S2-06商业化兑现质量：scorable_low_confidence；商业化核心公司指标达到最低评分覆盖，但完整度或来源置信度偏低：6/6；关键字段完整度=50%；非官方/媒体来源样本=4；缺失字段保留missing。
 
